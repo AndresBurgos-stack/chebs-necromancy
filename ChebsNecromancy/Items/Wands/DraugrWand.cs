@@ -1,6 +1,7 @@
-﻿using BepInEx;
+using BepInEx;
 using BepInEx.Configuration;
 using ChebsNecromancy.Minions;
+using ChebsNecromancy.Minions.Charred;
 using ChebsNecromancy.Minions.Draugr;
 using ChebsValheimLibrary.Items;
 using ChebsValheimLibrary.Minions;
@@ -43,14 +44,18 @@ namespace ChebsNecromancy.Items.Wands
         {
             Warrior,
             Archer,
-            BattleNeckro
+            BattleNeckro,
+            CharredWarrior,
+            CharredArcher
         }
 
         private List<MinionOption> _minionOptions = new()
         {
             MinionOption.Warrior,
             MinionOption.Archer,
-            MinionOption.BattleNeckro
+            MinionOption.BattleNeckro,
+            MinionOption.CharredWarrior,
+            MinionOption.CharredArcher
         };
 
         private int _selectedMinionOptionIndex;
@@ -214,6 +219,8 @@ namespace ChebsNecromancy.Items.Wands
                             MinionOption.Archer => "$chebgonaz_miniontype_archer",
                             MinionOption.Warrior => "$chebgonaz_miniontype_warrior",
                             MinionOption.BattleNeckro => "$chebgonaz_miniontype_battleneckro",
+                            MinionOption.CharredWarrior => "$chebgonaz_miniontype_charred_warrior",
+                            MinionOption.CharredArcher => "$chebgonaz_miniontype_charred_archer",
                             _ => "Error"
                         });
                         _createMinionButtonText.text = $"{createLocalized} {minionLocalized}";
@@ -238,6 +245,8 @@ namespace ChebsNecromancy.Items.Wands
                             MinionOption.Archer => "$chebgonaz_miniontype_archer",
                             MinionOption.Warrior => "$chebgonaz_miniontype_warrior",
                             MinionOption.BattleNeckro => "$chebgonaz_miniontype_battleneckro",
+                            MinionOption.CharredWarrior => "$chebgonaz_miniontype_charred_warrior",
+                            MinionOption.CharredArcher => "$chebgonaz_miniontype_charred_archer",
                             _ => "Error"
                         });
                         _createMinionButtonText.text = $"{createLocalized} {minionLocalized}";
@@ -298,6 +307,14 @@ namespace ChebsNecromancy.Items.Wands
                 
                 case MinionOption.BattleNeckro:
                     SpawnBattleNeckro();
+                    break;
+
+                case MinionOption.CharredWarrior:
+                    SpawnCharred(playerNecromancyLevel, CharredMinion.CharredType.Warrior);
+                    break;
+
+                case MinionOption.CharredArcher:
+                    SpawnCharred(playerNecromancyLevel, CharredMinion.CharredType.Archer);
                     break;
             }
         }
@@ -438,6 +455,47 @@ namespace ChebsNecromancy.Items.Wands
             BattleNeckroMinion.ConsumeResources();
 
             BattleNeckroMinion.InstantiateBattleNeckro(quality, playerNecromancyLevel);
+        }
+
+        private void SpawnCharred(float playerNecromancyLevel, CharredMinion.CharredType charredType)
+        {
+            // Charred minions piggyback on the Draugr Wand's own crafting/recipe
+            // so no new item needs to be modelled - just gated by its own Allowed toggle.
+            if (!DraugrAllowed.Value) return;
+
+            var minionLimitIsSet = CharredMinion.MaxCharred.Value > 0;
+            if (minionLimitIsSet)
+            {
+                UndeadMinion.CountActive<CharredMinion>(
+                    CharredMinion.MinionLimitIncrementsEveryXLevels.Value,
+                    CharredMinion.MaxCharred.Value);
+            }
+
+            var inventory = Player.m_localPlayer.GetInventory();
+            var itemsCost = charredType == CharredMinion.CharredType.Archer
+                ? CharredArcherMinion.ItemsCost
+                : CharredWarriorMinion.ItemsCost;
+
+            if (!UndeadMinion.CanSpawn(itemsCost, inventory, out var message))
+            {
+                MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, message);
+                return;
+            }
+
+            // scale according to skill, same tier thresholds as Draugr
+            int quality = CharredMinion.TierOneQuality.Value;
+            if (playerNecromancyLevel >= CharredMinion.TierThreeLevelReq.Value)
+            {
+                quality = CharredMinion.TierThreeQuality.Value;
+            }
+            else if (playerNecromancyLevel >= CharredMinion.TierTwoLevelReq.Value)
+            {
+                quality = CharredMinion.TierTwoQuality.Value;
+            }
+
+            CharredMinion.ConsumeResources(charredType);
+
+            CharredMinion.InstantiateCharred(quality, playerNecromancyLevel, charredType);
         }
     }
 }

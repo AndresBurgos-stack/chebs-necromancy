@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using ChebsNecromancy.Minions;
+using ChebsNecromancy.Minions.Charred;
 using ChebsNecromancy.Minions.Draugr;
 using ChebsNecromancy.Minions.Skeletons;
 using ChebsValheimLibrary.Minions;
@@ -67,6 +68,11 @@ namespace ChebsNecromancy.Patches
                 }
                 else if (undeadMinion is DraugrMinion
                     && DraugrMinion.DropOnDeath.Value != ChebGonazMinion.DropType.Nothing)
+                {
+                    undeadMinion.DepositIntoNearbyDeathCrate(__instance);
+                }
+                else if (undeadMinion is CharredMinion
+                    && CharredMinion.DropOnDeath.Value != ChebGonazMinion.DropType.Nothing)
                 {
                     undeadMinion.DepositIntoNearbyDeathCrate(__instance);
                 }

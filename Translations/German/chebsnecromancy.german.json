@@ -54,6 +54,14 @@
     "item_friendlyskeletonwand_draugrwand_desc": "Beschwöre freundliche Draugr-Günstlinge.",
     "item_friendlyskeletonwand_spectralshroud": "Spektraler Schleier",
     "item_friendlyskeletonwand_spectralshroud_desc": "Zieht Geister zu dir, die dir dienen, vorausgesetzt, du bist geschickt genug.",
-    "item_friendlyskeletonwand_spectralshroud_backpack": "Spektraler Schleier des Trägers"
+    "item_friendlyskeletonwand_spectralshroud_backpack": "Spektraler Schleier des Trägers",
+    "chebgonaz_miniontype_charred_warrior": "Charred Warrior",
+    "chebgonaz_miniontype_charred_archer": "Charred Archer",
+    "chebgonaz_charredwarrior": "Charred Warrior",
+    "chebgonaz_charredarcher": "Charred Archer",
+    "chebgonaz_miniontype_charred_twitcher": "Charred Twitcher",
+    "chebgonaz_charredtwitcher": "Charred Twitcher",
+    "item_chebgonaz_charredwand": "Charred Wand",
+    "item_chebgonaz_charredwand_desc": "Spawn charred minions."
 }
 

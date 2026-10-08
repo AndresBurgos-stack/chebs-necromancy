@@ -54,6 +54,14 @@
      "item_friendlyskeletonwand_draugrwand_desc": "아군 드라우거 하수인을 생성합니다.",
      "item_friendlyskeletonwand_spectralshroud": "유령 장막",
      "item_friendlyskeletonwand_spectralshroud_desc": "당신이 충분히 숙련되어 있다면 당신을 섬기도록 영혼을 끌어들입니다.",
-     "item_friendlyskeletonwand_spectralshroud_backpack": "홀딩의 유령 장막"
+     "item_friendlyskeletonwand_spectralshroud_backpack": "홀딩의 유령 장막",
+    "chebgonaz_miniontype_charred_warrior": "Charred Warrior",
+    "chebgonaz_miniontype_charred_archer": "Charred Archer",
+    "chebgonaz_charredwarrior": "Charred Warrior",
+    "chebgonaz_charredarcher": "Charred Archer",
+    "chebgonaz_miniontype_charred_twitcher": "Charred Twitcher",
+    "chebgonaz_charredtwitcher": "Charred Twitcher",
+    "item_chebgonaz_charredwand": "Charred Wand",
+    "item_chebgonaz_charredwand_desc": "Spawn charred minions."
 }
 

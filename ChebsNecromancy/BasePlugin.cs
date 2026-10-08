@@ -43,7 +43,7 @@ namespace ChebsNecromancy
     {
         public const string PluginGuid = "com.chebgonaz.ChebsNecromancy";
         public const string PluginName = "ChebsNecromancy";
-        public const string PluginVersion = "5.2.1";
+        public const string PluginVersion = "5.3.0";
         private const string ConfigFileName = PluginGuid + ".cfg";
         private static readonly string ConfigFileFullPath = Path.Combine(Paths.ConfigPath, ConfigFileName);
 
@@ -57,6 +57,7 @@ namespace ChebsNecromancy
         {
             new SkeletonWand(),
             new DraugrWand(),
+            new CharredWand(),
             new OrbOfBeckoning()
         };
 
@@ -192,7 +193,7 @@ namespace ChebsNecromancy
                 // clone vanilla Ashlands creatures into tameable Charred minions.
                 // Unlike skeletons/draugr these don't need a custom asset-bundle
                 // model: Charred_Melee / Charred_Archer already exist in the base game.
-                void CloneCharredPrefab(string vanillaPrefabName, string newPrefabName, System.Type minionComponentType)
+                void CloneCharredPrefab(string vanillaPrefabName, string newPrefabName, System.Type minionComponentType, string displayNameKey)
                 {
                     var vanillaPrefab = PrefabManager.Instance.GetPrefab(vanillaPrefabName);
                     if (vanillaPrefab == null)
@@ -207,12 +208,49 @@ namespace ChebsNecromancy
                     var clone = PrefabManager.Instance.CreateClonedPrefab(newPrefabName, vanillaPrefab);
 
                     var charredHumanoid = clone.GetComponent<Humanoid>();
-                    if (charredHumanoid != null) charredHumanoid.m_faction = Character.Faction.Players;
+                    if (charredHumanoid != null)
+                    {
+                        charredHumanoid.m_faction = Character.Faction.Players;
+                        charredHumanoid.m_name = displayNameKey;
+                        // Base minions must always spawn bald: GiveDefaultItems also rolls
+                        // m_randomSets and m_randomItems, so strip armor pieces there too.
+                        // Weapons are never matched by name and stay untouched.
+                        var armorPieces = new HashSet<string>
+                        {
+                            "Charred_Breastplate", "Charred_Helmet", "Charred_HipCloth", "Charred_MageCloths"
+                        };
+                        charredHumanoid.m_randomArmor = Array.Empty<GameObject>();
+                        if (charredHumanoid.m_randomSets != null)
+                        {
+                            foreach (var set in charredHumanoid.m_randomSets)
+                            {
+                                if (set?.m_items != null)
+                                {
+                                    set.m_items = set.m_items
+                                        .Where(go => go == null || !armorPieces.Contains(go.name)).ToArray();
+                                }
+                            }
+                        }
+                        if (charredHumanoid.m_randomItems != null)
+                        {
+                            charredHumanoid.m_randomItems = charredHumanoid.m_randomItems
+                                .Where(ri => ri?.m_prefab == null || !armorPieces.Contains(ri.m_prefab.name)).ToArray();
+                        }
+                    }
                     else Jotunn.Logger.LogError($"failed to get Humanoid on {newPrefabName}");
 
                     var charredMonsterAI = clone.GetComponent<MonsterAI>();
                     if (charredMonsterAI != null) charredMonsterAI.m_attackPlayerObjects = false;
                     else Jotunn.Logger.LogError($"failed to get MonsterAI on {newPrefabName}");
+
+                    // Vanilla Charred have no Tameable, so the Tameable hover patches
+                    // (owner + following/waiting status) never fire. Mirror the Draugr
+                    // bundle prefabs: commandable and already tamed.
+                    var charredTameable = clone.GetComponent<Tameable>();
+                    if (charredTameable == null) charredTameable = clone.AddComponent<Tameable>();
+                    charredTameable.m_commandable = true;
+                    charredTameable.m_startsTamed = true;
+                    charredTameable.m_tamingTime = 1800f;
 
                     // remove the vanilla loot table; CharredMinion generates its own
                     // resource-refund drops via CharacterDrop/RecordDrops, like Draugr/Skeleton do
@@ -227,8 +265,9 @@ namespace ChebsNecromancy
                 // NOTE: "Charred_Melee" and "Charred_Archer" are inferred from the vanilla
                 // trophy item IDs (TrophyCharredMelee / TrophyCharredArcher). Confirm the
                 // exact creature prefab names in-game before shipping.
-                CloneCharredPrefab("Charred_Melee", "ChebGonaz_CharredWarrior", typeof(CharredWarriorMinion));
-                CloneCharredPrefab("Charred_Archer", "ChebGonaz_CharredArcher", typeof(CharredArcherMinion));
+                CloneCharredPrefab("Charred_Melee", "ChebGonaz_CharredWarrior", typeof(CharredWarriorMinion), "$chebgonaz_charredwarrior");
+                CloneCharredPrefab("Charred_Archer", "ChebGonaz_CharredArcher", typeof(CharredArcherMinion), "$chebgonaz_charredarcher");
+                CloneCharredPrefab("Charred_Twitcher", "ChebGonaz_CharredTwitcher", typeof(CharredTwitcherMinion), "$chebgonaz_charredtwitcher");
             };
 
             harmony.PatchAll();
@@ -498,6 +537,7 @@ namespace ChebsNecromancy
             CharredMinion.CreateConfigs(this);
             CharredWarriorMinion.CreateConfigs(this);
             CharredArcherMinion.CreateConfigs(this);
+            CharredTwitcherMinion.CreateConfigs(this);
 
             GuardianWraithMinion.CreateConfigs(this);
 
@@ -627,8 +667,54 @@ namespace ChebsNecromancy
                 {
                     // we do the keyhints later after vanilla items are available
                     // so we can override what's in the prefab
-                    var wandPrefab =
-                        Base.LoadPrefabFromBundle(wand.PrefabName, chebgonazAssetBundle, RadeonFriendly.Value);
+                    GameObject wandPrefab;
+                    if (wand is CharredWand)
+                    {
+                        // Model: vanilla StaffRedTroll item. Behavior: Draugr Wand
+                        // melee transplanted onto it (the staff natively casts summons).
+                        var staffPrefab = PrefabManager.Instance.GetPrefab("StaffRedTroll");
+                        var draugrWandPrefab = Base.LoadPrefabFromBundle("ChebGonaz_DraugrWand.prefab",
+                            chebgonazAssetBundle, RadeonFriendly.Value);
+                        if (staffPrefab == null)
+                        {
+                            Jotunn.Logger.LogWarning("Charred Wand: StaffRedTroll not found, keeping Draugr visuals.");
+                            staffPrefab = draugrWandPrefab;
+                        }
+                        wandPrefab = PrefabManager.Instance.CreateClonedPrefab(wand.ItemName, staffPrefab);
+                        var charredShared = wandPrefab.GetComponent<ItemDrop>().m_itemData.m_shared;
+                        var draugrShared = draugrWandPrefab.GetComponent<ItemDrop>().m_itemData.m_shared;
+                        charredShared.m_attack = draugrShared.m_attack;
+                        charredShared.m_damages = draugrShared.m_damages;
+                        charredShared.m_damagesPerLevel = draugrShared.m_damagesPerLevel;
+                        charredShared.m_skillType = draugrShared.m_skillType;
+                        charredShared.m_maxDurability = draugrShared.m_maxDurability;
+                        charredShared.m_durabilityDrain = draugrShared.m_durabilityDrain;
+                        charredShared.m_useDurability = draugrShared.m_useDurability;
+                        charredShared.m_useDurabilityDrain = draugrShared.m_useDurabilityDrain;
+                        charredShared.m_trailStartEffect = draugrShared.m_trailStartEffect;
+                        charredShared.m_triggerEffect = draugrShared.m_triggerEffect;
+                        charredShared.m_blockEffect = draugrShared.m_blockEffect;
+                        CharredWand.ApplyBlueCustomization(wandPrefab);
+                    }
+                    else
+                    {
+                        wandPrefab =
+                            Base.LoadPrefabFromBundle(wand.PrefabName, chebgonazAssetBundle, RadeonFriendly.Value);
+                    }
+
+                    if (wand is SkeletonWand)
+                    {
+                        // The Skeleton Wand bundle prefab ships with null trail, trigger
+                        // and block effects, which throws on every swing and stays silent.
+                        // The Draugr Wand has working ones, so borrow them.
+                        var draugrWandPrefab = Base.LoadPrefabFromBundle("ChebGonaz_DraugrWand.prefab",
+                            chebgonazAssetBundle, RadeonFriendly.Value);
+                        var brokenShared = wandPrefab.GetComponent<ItemDrop>().m_itemData.m_shared;
+                        var workingShared = draugrWandPrefab.GetComponent<ItemDrop>().m_itemData.m_shared;
+                        brokenShared.m_trailStartEffect = workingShared.m_trailStartEffect;
+                        brokenShared.m_triggerEffect = workingShared.m_triggerEffect;
+                        brokenShared.m_blockEffect = workingShared.m_blockEffect;
+                    }
                     wand.CreateButtons();
                     KeyHintManager.Instance.AddKeyHint(wand.GetKeyHint());
 

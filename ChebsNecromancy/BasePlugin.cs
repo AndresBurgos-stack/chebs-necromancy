@@ -11,6 +11,7 @@ using ChebsNecromancy.Items.Armor.Player;
 using ChebsNecromancy.Items.Wands;
 using ChebsNecromancy.Items.Weapons.Minions;
 using ChebsNecromancy.Minions;
+using ChebsNecromancy.Minions.Charred;
 using ChebsNecromancy.Minions.Draugr;
 using ChebsNecromancy.Minions.Skeletons;
 using ChebsNecromancy.Options;
@@ -187,6 +188,47 @@ namespace ChebsNecromancy
                     
                     ItemManager.Instance.AddItem(spectralShroudItem.GetCustomItemFromPrefab(spectralShroudPrefab));
                 }
+
+                // clone vanilla Ashlands creatures into tameable Charred minions.
+                // Unlike skeletons/draugr these don't need a custom asset-bundle
+                // model: Charred_Melee / Charred_Archer already exist in the base game.
+                void CloneCharredPrefab(string vanillaPrefabName, string newPrefabName, System.Type minionComponentType)
+                {
+                    var vanillaPrefab = PrefabManager.Instance.GetPrefab(vanillaPrefabName);
+                    if (vanillaPrefab == null)
+                    {
+                        Jotunn.Logger.LogError(
+                            $"Failed to find vanilla prefab '{vanillaPrefabName}'. Charred minions require the " +
+                            "Ashlands DLC to be installed, and the exact prefab name can change between game " +
+                            "versions - verify it in-game if this error appears.");
+                        return;
+                    }
+
+                    var clone = PrefabManager.Instance.CreateClonedPrefab(newPrefabName, vanillaPrefab);
+
+                    var charredHumanoid = clone.GetComponent<Humanoid>();
+                    if (charredHumanoid != null) charredHumanoid.m_faction = Character.Faction.Players;
+                    else Jotunn.Logger.LogError($"failed to get Humanoid on {newPrefabName}");
+
+                    var charredMonsterAI = clone.GetComponent<MonsterAI>();
+                    if (charredMonsterAI != null) charredMonsterAI.m_attackPlayerObjects = false;
+                    else Jotunn.Logger.LogError($"failed to get MonsterAI on {newPrefabName}");
+
+                    // remove the vanilla loot table; CharredMinion generates its own
+                    // resource-refund drops via CharacterDrop/RecordDrops, like Draugr/Skeleton do
+                    var charredCharacterDrop = clone.GetComponent<CharacterDrop>();
+                    if (charredCharacterDrop != null) Destroy(charredCharacterDrop);
+
+                    clone.AddComponent(minionComponentType);
+
+                    CreatureManager.Instance.AddCreature(new CustomCreature(clone, false));
+                }
+
+                // NOTE: "Charred_Melee" and "Charred_Archer" are inferred from the vanilla
+                // trophy item IDs (TrophyCharredMelee / TrophyCharredArcher). Confirm the
+                // exact creature prefab names in-game before shipping.
+                CloneCharredPrefab("Charred_Melee", "ChebGonaz_CharredWarrior", typeof(CharredWarriorMinion));
+                CloneCharredPrefab("Charred_Archer", "ChebGonaz_CharredArcher", typeof(CharredArcherMinion));
             };
 
             harmony.PatchAll();
@@ -452,6 +494,10 @@ namespace ChebsNecromancy
             DraugrArcherTier1Minion.CreateConfigs(this);
             DraugrArcherTier2Minion.CreateConfigs(this);
             DraugrArcherTier3Minion.CreateConfigs(this);
+
+            CharredMinion.CreateConfigs(this);
+            CharredWarriorMinion.CreateConfigs(this);
+            CharredArcherMinion.CreateConfigs(this);
 
             GuardianWraithMinion.CreateConfigs(this);
 

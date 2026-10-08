@@ -30,7 +30,7 @@ namespace ChebsNecromancy.Patches
             {
                 // if attacking with a wand, destroy the minion if you own it
                 if (!__instance.m_attack) return;
-                var friendlySkeletonWands = new List<string> { "$item_friendlyskeletonwand", "$item_friendlyskeletonwand_draugrwand" };
+                var friendlySkeletonWands = new List<string> { "$item_friendlyskeletonwand", "$item_friendlyskeletonwand_draugrwand", "$item_chebgonaz_charredwand" };
                 var undeadMinion = Physics.OverlapSphere(__instance.transform.position, 2)
                     .Select(collider => collider.GetComponentInParent<UndeadMinion>())
                     .Where(undead => undead != null)

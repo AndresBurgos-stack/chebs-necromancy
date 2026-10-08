@@ -325,7 +325,10 @@ namespace ChebsNecromancy.Minions
                 var firstData = customData[0];
                 if (firstData is { x: 666f, y: 666f, z: 666f, w: 666f })
                 {
-                    // probably a priest heal
+                    // probably a priest heal; Charred opt out unless configured in
+                    if (this is Charred.CharredMinion
+                        && !Charred.CharredMinion.PriestHealingAllowed.Value) return;
+
                     if (!TryGetComponent(out Humanoid humanoid))
                     {
                         //Logger.LogError("Failed to get humanoid");

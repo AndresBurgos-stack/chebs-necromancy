@@ -332,3 +332,11 @@ Date | Version | Notes
 
 </details>
 
+## Building on Windows (build.py)
+
+Requirements: .NET SDK 8+, git, python3, Valheim + BepInEx (game folder or Thunderstore/r2modman/Gale profile).
+
+- Build: `py build.py` (or `--config Debug`). Auto-detects paths, resyncs with `git pull --ff-only`, validates the environment, restores NuGet, builds, reports warnings/errors and prints the fresh DLL path.
+- Overrides: `VALHEIM_DIR` and `BEPINEX_DIR` env vars if autodetection misses something.
+- Proposing changes: `py build.py --pr "title"` builds first and **only on green build** opens a PR from a new `build/...` branch. Never pushes to master/main: merges are manual. `--dry-run` previews without doing anything.
+

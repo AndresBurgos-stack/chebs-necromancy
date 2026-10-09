@@ -1,34 +1,23 @@
-# Cheb's Necromancy
+# Chebs Necromancy Enhanced
 
-Cheb's Necromancy adds Necromancy to Valheim via craftable wands and structures. Minions will follow you, guard your base, and perform menial tasks like woodcutting, farming, mining.
+Fork of [Cheb's Necromancy](https://github.com/jpw1991/chebs-necromancy) focused on Ashlands Charred minions. All credit for the original mod goes to Cheb Gonaz and contributors (see history below); this fork adds its own content on top.
+
+## New in Enhanced: the Charred Wand
+
+- New craftable **Charred Wand** (forge: CharredBone + FlametalNew) that summons **Charred Warrior, Charred Archer and Charred Twitcher** (H cycles, B creates, F/T/Shift+T/G command).
+- **Shift+B armored elites**: full Charred armor set with its own HP multiplier, metal refund on death and death-crate support.
+- Deterministic base models, commandable minions with owner/status hover, necromancy-scaled HP/tiers, out-of-combat regen, configurable resists and XP — everything server-synced and tunable.
+- Visual identity: blue StaffRedTroll-based wand (model + icon) and blue soul/eyes particles behind `CharredCustomColors` (+ HTML color selector).
 
 ## Confused? Try the [wiki](https://github.com/jpw1991/chebs-necromancy/wiki).
 
-##  About Me
+## About this fork
 
-[![image1](https://imgur.com/Fahi6sP.png)](https://necrobase.chebgonaz.com)
-[![image2](https://imgur.com/X18OyQs.png)](https://ko-fi.com/chebgonaz)
-[![image3](https://imgur.com/4e64jQ8.png)](https://www.patreon.com/chebgonaz?fan_landing=true)
+Maintained at [AndresBurgos-stack/chebs-necromancy](https://github.com/AndresBurgos-stack/chebs-necromancy). Report bugs and request features via [GitHub issues](https://github.com/AndresBurgos-stack/chebs-necromancy/issues).
 
-I'm a YouTuber/Game Developer/Modder who is interested in all things necromancy and minion-related. Please check out my [YouTube channel](https://www.youtube.com/channel/UCPlZ1XnekiJxKymXbXyvkCg) and if you like the work I do and want to give back, please consider supporting me on [Patreon](https://www.patreon.com/chebgonaz?fan_landing=true) or throwing me a dime on [Ko-fi](https://ko-fi.com/chebgonaz). You can also check out my [website](https://necrobase.chebgonaz.com) where I host information on all known necromancy mods, games, books, videos and also some written reviews/guides.
+##  About the original mod
 
-Thank you and I hope you enjoy the mod! If you have questions or need help ask me on [Discord](https://discord.gg/BweDFym6sc).
-
-### Bisect Hosting
-
-I'm partnered with [Bisect Hosting](https://bisecthosting.com/chebgonaz) to give you a discount when you use promocode `chebgonaz`.
-
-![bisectbanner](https://www.bisecthosting.com/partners/custom-banners/b2629ae1-293a-4094-9d2d-002d14529a82.webp)
-
-## Reporting Bugs & Requesting Features
-
-If you would like to report a bug or request a feature, the best way to do it (in order from most preferable to least preferable) is:
-
-a) Create an issue on my [GitHub](https://github.com/jpw1991/chebs-necromancy).
-
-b) Write to me on [Discord](https://discord.gg/BweDFym6sc).
-
-c) Write a comment on the [Nexus page](https://www.nexusmods.com/valheim/mods/2040?tab=posts).
+Cheb's Necromancy by Cheb Gonaz adds Necromancy to Valheim via craftable wands and structures. This fork keeps all of that and builds on it — full history preserved below.
 
 ## Requirements
 

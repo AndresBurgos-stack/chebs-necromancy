@@ -1,6 +1,6 @@
-# Cheb's Necromancy
+# Chebs Necromancy Enhanced
 
-Cheb's Necromancy adds Necromancy to Valheim via craftable wands and structures. Minions will follow you, guard your base, and perform menial tasks like woodcutting, farming, mining.
+Fork of [Cheb's Necromancy](https://github.com/jpw1991/chebs-necromancy) focused on Ashlands Charred minions (Warrior / Archer / Twitcher) via a new Charred Wand, armored elite tiers and full config. Thunderstore package: `ChebsNecromancyEnhanced` v5.3.1+.
 
 ## Confused? Try the [wiki](https://github.com/jpw1991/chebs-necromancy/wiki).
 

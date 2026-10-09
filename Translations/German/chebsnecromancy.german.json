@@ -62,6 +62,8 @@
     "chebgonaz_miniontype_charred_twitcher": "Charred Twitcher",
     "chebgonaz_charredtwitcher": "Charred Twitcher",
     "item_chebgonaz_charredwand": "Charred Wand",
-    "item_chebgonaz_charredwand_desc": "Spawn charred minions."
+    "item_chebgonaz_charredwand_desc": "Spawn charred minions.",
+    "chebgonaz_dance": "Dance",
+    "chebgonaz_dancing": "Dancing..."
 }
 

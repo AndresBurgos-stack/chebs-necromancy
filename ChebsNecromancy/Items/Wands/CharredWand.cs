@@ -26,6 +26,9 @@ namespace ChebsNecromancy.Items.Wands
         public static ConfigEntry<bool> CharredAllowed;
 
         public static ConfigEntry<float> CharredSetFollowRange;
+
+        protected ConfigEntry<KeyCode> DanceConfig;
+        protected ButtonConfig DanceButton;
         #endregion
 
         public override string ItemName => "ChebGonaz_CharredWand";
@@ -111,6 +114,9 @@ namespace ChebsNecromancy.Items.Wands
             CharredAllowed = plugin.Config.Bind(serverSynced, "CharredAllowed",
                 true, new ConfigDescription("If false, charred aren't loaded at all and can't be summoned.", null,
                     new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            DanceConfig = plugin.Config.Bind("Keybinds (Client)", ItemName + "Dance",
+                KeyCode.J, new ConfigDescription("The key to toggle dancing on nearby minions."));
         }
 
         public override void UpdateRecipe()
@@ -279,6 +285,23 @@ namespace ChebsNecromancy.Items.Wands
             return customItem;
         }
 
+        public override void CreateButtons()
+        {
+            base.CreateButtons();
+
+            if (DanceConfig.Value != KeyCode.None)
+            {
+                DanceButton = new ButtonConfig
+                {
+                    Name = ItemName + "Dance",
+                    Config = DanceConfig,
+                    HintToken = "$chebgonaz_dance",
+                    BlockOtherInputs = true
+                };
+                InputManager.Instance.AddButton(BasePlugin.PluginGuid, DanceButton);
+            }
+        }
+
         public override KeyHintConfig GetKeyHint()
         {
             var buttonConfigs = new List<ButtonConfig>();
@@ -288,6 +311,7 @@ namespace ChebsNecromancy.Items.Wands
             if (FollowButton != null) buttonConfigs.Add(FollowButton);
             if (WaitButton != null) buttonConfigs.Add(WaitButton);
             if (TeleportButton != null) buttonConfigs.Add(TeleportButton);
+            if (DanceButton != null) buttonConfigs.Add(DanceButton);
 
             return new KeyHintConfig
             {
@@ -369,6 +393,11 @@ namespace ChebsNecromancy.Items.Wands
                 if (TeleportButton != null && ZInput.GetButton(TeleportButton.Name))
                 {
                     TeleportFollowingMinionsToPlayer();
+                    return true;
+                }
+                if (DanceButton != null && ZInput.GetButton(DanceButton.Name))
+                {
+                    MakeNearbyMinionsDance(CharredSetFollowRange.Value);
                     return true;
                 }
             }

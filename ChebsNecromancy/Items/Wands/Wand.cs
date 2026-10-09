@@ -1,6 +1,7 @@
 ﻿using BepInEx;
 using BepInEx.Configuration;
 using ChebsNecromancy.CustomPrefabs;
+using ChebsNecromancy.Minions;
 using ChebsValheimLibrary.Items;
 using ChebsValheimLibrary.Minions;
 using Jotunn.Configs;
@@ -272,6 +273,37 @@ namespace ChebsNecromancy.Items.Wands
                 {
                     minion.Wait(player.transform.position);
                 }
+            }
+        }
+
+        public void MakeNearbyMinionsDance(float radius)
+        {
+            var player = Player.m_localPlayer;
+            var allCharacters = Character.GetAllCharacters();
+            foreach (var character in allCharacters)
+            {
+                if (character.IsDead())
+                {
+                    continue;
+                }
+
+                var minion = character.GetComponent<UndeadMinion>();
+                if (minion == null || !minion.canBeCommanded
+                                   || !minion.BelongsToPlayer(player.GetPlayerName())) continue;
+
+                if (!character.IsOwner())
+                {
+                    character.m_nview.ClaimOwnership();
+                }
+
+                var distance = Vector3.Distance(character.transform.position, player.transform.position);
+                if (distance > radius) continue;
+
+                var dancing = !minion.IsDancing();
+                minion.SetDancing(dancing);
+                if (dancing) minion.Wait(character.transform.position);
+
+                MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "$chebgonaz_dancing");
             }
         }
 

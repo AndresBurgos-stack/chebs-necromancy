@@ -1,8 +1,8 @@
 ﻿{
-  "name": "ChebsNecromancy",
-  "description": "Cheb's Necromancy adds Necromancy to Valheim via craftable wands and structures. Minions will follow you, guard your base, and perform menial tasks.",
-  "version_number": "5.3.0",
-  "website_url": "https://github.com/jpw1991/chebs-necromancy",
+  "name": "ChebsNecromancyEnhanced",
+  "description": "Chebs Necromancy Enhanced: Ashlands Charred minions (Warrior/Archer/Twitcher) via a new Charred Wand with armored elite tiers, visual customization and full config. Fork of Cheb's Necromancy.",
+  "version_number": "5.3.1",
+  "website_url": "https://github.com/AndresBurgos-stack/chebs-necromancy",
   "dependencies": [
     "ValheimModding-Jotunn-2.30.0"
   ]

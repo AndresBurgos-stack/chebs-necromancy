@@ -64,6 +64,15 @@
     "item_chebgonaz_charredwand": "Charred Wand",
     "item_chebgonaz_charredwand_desc": "Spawn charred minions.",
     "chebgonaz_dance": "Dance",
-    "chebgonaz_dancing": "Dancing..."
+    "chebgonaz_dancing": "Dancing...",
+    "item_chebgonaz_wolfcloak": "Wolf Cloak",
+    "item_chebgonaz_wolfcloak_desc": "Take the form of a wolf: faster, quieter, harder to spot.",
+    "se_chebgonaz_wolfform": "Wolf Form",
+    "se_chebgonaz_wolfform_desc": "Swift and silent as a wolf.",
+    "chebgonaz_wolftoggle": "Wolf Form",
+    "chebgonaz_wolfform_on": "Wolf form!",
+"chebgonaz_wolfform_devoured": "Rohes Fleisch verschlungen",
+    "chebgonaz_wolfform_off": "Human form!",
+    "chebgonaz_wolfform_cooldown": "Wolf form cooling down"
 }
 

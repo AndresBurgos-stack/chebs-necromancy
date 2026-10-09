@@ -94,6 +94,13 @@ namespace ChebsNecromancy.Minions
             }
         }
 
+        // Runs after the Animator, so procedural bone motion isn't overwritten
+        // by the idle animation pose.
+        private void LateUpdate()
+        {
+            UpdateDance();
+        }
+
         private void Update()
         {
             if (CleanupAt > 0
@@ -122,14 +129,15 @@ namespace ChebsNecromancy.Minions
 
                 nextPlayerOnlineCheckAt = Time.time + NextPlayerOnlineCheckInterval;
             }
-
-            UpdateDance();
         }
 
         private ZNetView _danceView;
         private Transform _danceHead;
+        private Transform _danceSpine;
         private Quaternion _danceBaseRot;
+        private Quaternion _danceSpineBaseRot;
         private bool _danceWasOn;
+        private bool _danceHeadWarned;
 
         public void SetDancing(bool dancing)
         {
@@ -151,27 +159,47 @@ namespace ChebsNecromancy.Minions
             {
                 if (!_danceWasOn) return;
                 if (_danceHead != null) _danceHead.localRotation = _danceBaseRot;
+                if (_danceSpine != null) _danceSpine.localRotation = _danceSpineBaseRot;
                 _danceWasOn = false;
                 return;
             }
             if (_danceHead == null)
             {
-                _danceHead = FindHeadBone();
-                if (_danceHead == null) return;
+                _danceHead = FindBone("Head");
+                _danceSpine = FindBone("Spine");
+                if (_danceHead == null)
+                {
+                    if (!_danceHeadWarned)
+                    {
+                        Logger.LogWarning($"Dance: no Head bone found on {name}, dancing skipped.");
+                        _danceHeadWarned = true;
+                    }
+                    return;
+                }
                 _danceBaseRot = _danceHead.localRotation;
+                if (_danceSpine != null) _danceSpineBaseRot = _danceSpine.localRotation;
             }
             _danceWasOn = true;
-            var t = Time.time * 11f;
-            _danceHead.localRotation = _danceBaseRot * Quaternion.Euler(Mathf.Sin(t) * 28f, 0f, Mathf.Sin(t * 0.5f) * 7f);
+            var t = Time.time * 12f;
+            _danceHead.localRotation = _danceBaseRot * Quaternion.Euler(Mathf.Sin(t) * 34f, 0f, 0f);
+            if (_danceSpine != null)
+            {
+                _danceSpine.localRotation = _danceSpineBaseRot * Quaternion.Euler(Mathf.Sin(t - 0.7f) * 9f, 0f, 0f);
+            }
+        }
+
+        private Transform FindBone(string boneName)
+        {
+            foreach (var bone in GetComponentsInChildren<Transform>(true))
+            {
+                if (bone != transform && bone.name.IndexOf(boneName, StringComparison.OrdinalIgnoreCase) >= 0) return bone;
+            }
+            return null;
         }
 
         private Transform FindHeadBone()
         {
-            foreach (var bone in GetComponentsInChildren<Transform>(true))
-            {
-                if (bone != transform && bone.name.IndexOf("Head", StringComparison.OrdinalIgnoreCase) >= 0) return bone;
-            }
-            return null;
+            return FindBone("Head");
         }
 
         #region CreatedAtLevelZDO

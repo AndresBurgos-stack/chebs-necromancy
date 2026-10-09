@@ -16,6 +16,7 @@ namespace ChebsNecromancy.Minions
         public const string MinionCreatedAtLevelKey = "UndeadMinionCreatedAtLevel";
         public const string MinionEmblemZdoKey = "UndeadMinionEmblem";
         public const string MinionEyeZdoKey = "UndeadMinionEye";
+        public const string MinionDanceZdoKey = "ChebDancing";
 
         #region CleanupAfterLogout
 
@@ -121,6 +122,56 @@ namespace ChebsNecromancy.Minions
 
                 nextPlayerOnlineCheckAt = Time.time + NextPlayerOnlineCheckInterval;
             }
+
+            UpdateDance();
+        }
+
+        private ZNetView _danceView;
+        private Transform _danceHead;
+        private Quaternion _danceBaseRot;
+        private bool _danceWasOn;
+
+        public void SetDancing(bool dancing)
+        {
+            var view = _danceView ??= GetComponent<ZNetView>();
+            if (view == null) return;
+            view.GetZDO().Set(MinionDanceZdoKey, dancing);
+        }
+
+        public bool IsDancing()
+        {
+            var view = _danceView ??= GetComponent<ZNetView>();
+            if (view == null) return false;
+            return view.GetZDO().GetBool(MinionDanceZdoKey, false);
+        }
+
+        protected virtual void UpdateDance()
+        {
+            if (!IsDancing())
+            {
+                if (!_danceWasOn) return;
+                if (_danceHead != null) _danceHead.localRotation = _danceBaseRot;
+                _danceWasOn = false;
+                return;
+            }
+            if (_danceHead == null)
+            {
+                _danceHead = FindHeadBone();
+                if (_danceHead == null) return;
+                _danceBaseRot = _danceHead.localRotation;
+            }
+            _danceWasOn = true;
+            var t = Time.time * 11f;
+            _danceHead.localRotation = _danceBaseRot * Quaternion.Euler(Mathf.Sin(t) * 28f, 0f, Mathf.Sin(t * 0.5f) * 7f);
+        }
+
+        private Transform FindHeadBone()
+        {
+            foreach (var bone in GetComponentsInChildren<Transform>(true))
+            {
+                if (bone != transform && bone.name.IndexOf("Head", StringComparison.OrdinalIgnoreCase) >= 0) return bone;
+            }
+            return null;
         }
 
         #region CreatedAtLevelZDO

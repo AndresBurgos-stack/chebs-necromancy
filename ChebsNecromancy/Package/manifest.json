@@ -1,7 +1,7 @@
 ﻿{
   "name": "ChebsNecromancyEnhanced",
   "description": "Chebs Necromancy Enhanced: Ashlands Charred minions (Warrior/Archer/Twitcher) via a new Charred Wand with armored elite tiers, visual customization, minion dance, and a Wolf Form cloak (devour raw meat as cooked) — full config. Fork of Cheb's Necromancy.",
-  "version_number": "1.2.1",
+  "version_number": "1.2.2",
   "website_url": "https://github.com/AndresBurgos-stack/chebs-necromancy",
   "dependencies": [
     "ValheimModding-Jotunn-2.30.0"

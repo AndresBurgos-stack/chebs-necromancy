@@ -14,7 +14,7 @@ namespace ChebsNecromancy.Items.Armor.Player
         public const string CloakItemName = "ChebGonaz_WolfCloak";
         public override string ItemName => CloakItemName;
         public override string PrefabName => "CapeWolf";
-        protected override string DefaultRecipe => "WolfPelt:6,WolfFang:2,TrophyWolf:1";
+        protected override string DefaultRecipe => "WolfPelt:10,WolfFang:4,TrophyWolf:1";
 
         public static ConfigEntry<bool> Allowed;
 
@@ -36,7 +36,7 @@ namespace ChebsNecromancy.Items.Armor.Player
                     new ConfigurationManagerAttributes { IsAdminOnly = true }));
 
             CraftingStationLevel = plugin.Config.Bind($"{GetType().Name} (Server Synced)", "WolfCloakCraftingStationLevel",
-                1, new ConfigDescription("Crafting station level required to craft Wolf Cloak", null,
+                2, new ConfigDescription("Crafting station level required to craft Wolf Cloak", null,
                     new ConfigurationManagerAttributes { IsAdminOnly = true }));
 
             CraftingCost = plugin.Config.Bind($"{GetType().Name} (Server Synced)", "WolfCloakCraftingCosts",

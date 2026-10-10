@@ -1,6 +1,12 @@
 # Chebs Necromancy Enhanced
 
-Fork of [Cheb's Necromancy](https://github.com/jpw1991/chebs-necromancy) focused on Ashlands Charred minions (Warrior / Archer / Twitcher) via a new Charred Wand, armored elite tiers and full config. Thunderstore package: `ChebsNecromancyEnhanced` v5.3.1+.
+Fork of [Cheb's Necromancy](https://github.com/jpw1991/chebs-necromancy) focused on Ashlands Charred minions (Warrior / Archer / Twitcher) via a new Charred Wand, armored elite tiers and full config. Thunderstore package: `ChebsNecromancyEnhanced` v1.2.1+.
+
+## New in Enhanced: Wolf Form (1.2.0+)
+
+- Craftable **Wolf Cloak** (forge level 2: WolfPelt x10, WolfFang x4, TrophyWolf x1) — press **K** to take wolf form for **60s** (cooldown **120s**).
+- Faster (+80% move speed), silent and hard to spot: enemies ignore you unless you strike first; bite attack deals your weapon damage; dodge and equipment changes are locked while transformed, with HUD timer and poof effect.
+- Devour **raw meat** while transformed: it is consumed as its **cooked** counterpart in the vanilla food bar (instant HP/stamina bonus as fallback).
 
 ## Confused? Try the [wiki](https://github.com/jpw1991/chebs-necromancy/wiki).
 

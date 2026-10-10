@@ -502,27 +502,30 @@ namespace ChebsNecromancy.Items.Armor.Player
                     return;
                 }
                 var wolf = Object.Instantiate(wolfPrefab, player.transform.position, player.transform.rotation);
-                // Strip networking first so a half-stripped clone can never linger
-                // registered in ZNetScene (that spams RemoveObjects NREs); each
-                // destroy is guarded so one bad teardown can't abort the rest.
-                var stripOrder = new List<string>
+                // Strip networking immediately (Destroy is deferred to end of frame,
+                // which leaks a live ZNetView to ZNetScene: in multiplayer the host
+                // adopts it as a real wild wolf plus a network/AI hitch on K).
+                // Single traversal: the old per-type GetComponentsInChildren loop
+                // also hitched the K press re-scanning the whole prefab tree.
+                var strip = new HashSet<string>
                 {
-                    "ZNetView", "ZSyncTransform",
+                    "ZNetView", "ZSyncTransform", "ZSyncAnimation",
                     "CharacterDrop", "Tameable", "MonsterAI", "FootStep",
                     "CapsuleCollider", "Rigidbody", "Humanoid", "Character"
                 };
-                foreach (var typeName in stripOrder)
+                foreach (var component in wolf.GetComponentsInChildren<Component>(true))
                 {
-                    foreach (var component in wolf.GetComponentsInChildren<Component>(true))
+                    if (component == null) continue;
+                    if (component is Collider || component is Rigidbody
+                        || strip.Contains(component.GetType().Name))
                     {
-                        if (component == null || component.GetType().Name != typeName) continue;
                         try
                         {
-                            Object.Destroy(component);
+                            Object.DestroyImmediate(component);
                         }
                         catch (System.Exception ex)
                         {
-                            Logger.LogWarning($"WolfForm: strip {typeName} failed ({ex.GetType().Name}).");
+                            Logger.LogWarning($"WolfForm: strip {component.GetType().Name} failed ({ex.GetType().Name}).");
                         }
                     }
                 }

@@ -8,6 +8,13 @@ Fork of [Cheb's Necromancy](https://github.com/jpw1991/chebs-necromancy) focused
 - **Shift+B armored elites**: full Charred armor set with its own HP multiplier, metal refund on death and death-crate support.
 - Deterministic base models, commandable minions with owner/status hover, necromancy-scaled HP/tiers, out-of-combat regen, configurable resists and XP — everything server-synced and tunable.
 - Visual identity: blue StaffRedTroll-based wand (model + icon) and blue soul/eyes particles behind `CharredCustomColors` (+ HTML color selector).
+- Minions dance: press **J** to make your minions headbang (synced for everyone).
+
+## New in 1.2.0: Wolf Form
+
+- Craftable **Wolf Cloak** (forge level 2: WolfPelt x10, WolfFang x4, TrophyWolf x1) — press **K** to take wolf form for **60s** (cooldown **120s**).
+- Faster (+80% move speed), silent and hard to spot: enemies ignore you unless you strike first; bite attack deals your weapon damage; dodge and equipment changes are locked while transformed, with HUD timer and poof effect.
+- Devour **raw meat** while transformed: it is consumed as its **cooked** counterpart in the vanilla food bar (instant HP/stamina bonus as fallback).
 
 ## Confused? Try the [wiki](https://github.com/jpw1991/chebs-necromancy/wiki).
 

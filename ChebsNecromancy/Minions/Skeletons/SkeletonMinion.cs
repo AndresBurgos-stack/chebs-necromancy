@@ -365,7 +365,11 @@ namespace ChebsNecromancy.Minions.Skeletons
             character.SetHealth(health);
         }
 
-        public virtual void ScaleEquipment(float necromancyLevel, SkeletonType skeletonType, ArmorType armorType)
+        // isMistlandsArmor defaults to false so every existing caller (DraugrMinion
+        // doesn't call this one, but OrbOfBeckoning does) keeps working unchanged.
+        // Only SkeletonWand's Warrior branch ever passes true.
+        public virtual void ScaleEquipment(float necromancyLevel, SkeletonType skeletonType, ArmorType armorType,
+            bool isMistlandsArmor = false)
         {
             var defaultItems = new List<GameObject>();
 
@@ -488,12 +492,34 @@ namespace ChebsNecromancy.Minions.Skeletons
                     Emblem = InternalName.GetName(emblem);
                     break;
                 case ArmorType.BlackMetal:
-                    defaultItems.AddRange(new[] {
-                        helmetPrefab,
-                        ZNetScene.instance.GetPrefab("ChebGonaz_ArmorBlackIronChest"),
-                        ZNetScene.instance.GetPrefab("ChebGonaz_ArmorBlackIronLegs"),
-                        ZNetScene.instance.GetPrefab("CapeLox"),
-                    });
+                    // Scoped strictly to WarriorTier4 so Poison/Mage/Priest Tier3
+                    // (which also map to ArmorType.BlackMetal elsewhere) are never
+                    // affected by this, even if isMistlandsArmor were somehow true
+                    // for them.
+                    if (isMistlandsArmor && skeletonType == SkeletonType.WarriorTier4)
+                    {
+                        // DEBUG TEST: identical to the Black Iron branch below except
+                        // chest/legs are swapped to Carapace. Deliberately reusing
+                        // helmetPrefab (the custom ChebGonaz_HelmetBlackIronSkeleton,
+                        // modeled for this skull) instead of a vanilla Carapace/Iron
+                        // helmet, since those are made for the player's head and
+                        // likely don't fit this skeleton's skull shape correctly.
+                        defaultItems.AddRange(new[] {
+                            helmetPrefab,
+                            ZNetScene.instance.GetPrefab("ArmorCarapaceChest"),
+                            ZNetScene.instance.GetPrefab("ArmorCarapaceLegs"),
+                            ZNetScene.instance.GetPrefab("CapeLox"),
+                        });
+                    }
+                    else
+                    {
+                        defaultItems.AddRange(new[] {
+                            helmetPrefab,
+                            ZNetScene.instance.GetPrefab("ChebGonaz_ArmorBlackIronChest"),
+                            ZNetScene.instance.GetPrefab("ChebGonaz_ArmorBlackIronLegs"),
+                            ZNetScene.instance.GetPrefab("CapeLox"),
+                        });
+                    }
                     if (BasePlugin.DurabilityDamage.Value) { wand.m_durability -= BasePlugin.DurabilityDamageBlackIron.Value; }
                     Emblem = InternalName.GetName(emblem);
                     break;
@@ -530,7 +556,7 @@ namespace ChebsNecromancy.Minions.Skeletons
         }
         
         public static void InstantiateSkeleton(int quality, float playerNecromancyLevel,
-            SkeletonType skeletonType, ArmorType armorType)
+            SkeletonType skeletonType, ArmorType armorType, bool isMistlandsArmor = false)
         {
             if (skeletonType is SkeletonType.None) return;
             
@@ -562,7 +588,7 @@ namespace ChebsNecromancy.Minions.Skeletons
                 _ => spawnedChar.AddComponent<SkeletonMinion>()
             };
             minion.SetCreatedAtLevel(playerNecromancyLevel);
-            minion.ScaleEquipment(playerNecromancyLevel, skeletonType, armorType);
+            minion.ScaleEquipment(playerNecromancyLevel, skeletonType, armorType, isMistlandsArmor);
             minion.ScaleStats(playerNecromancyLevel);
 
             var eyeColor = Options.Options.EyeColor;
@@ -690,6 +716,10 @@ namespace ChebsNecromancy.Minions.Skeletons
                     break;
                 case ArmorType.BlackMetal:
                     AddOrUpdateDrop(characterDrop, "BlackMetal", BasePlugin.ArmorBlackIronRequiredConfig.Value);
+                    if (isMistlandsArmor)
+                    {
+                        AddOrUpdateDrop(characterDrop, "Carapace", BasePlugin.ArmorCarapaceRequiredConfig.Value);
+                    }
                     break;
             }
 
@@ -700,7 +730,8 @@ namespace ChebsNecromancy.Minions.Skeletons
             minion.RecordDrops(characterDrop);
         }
         
-        public static void ConsumeResources(SkeletonType skeletonType, ArmorType armorType)
+        public static void ConsumeResources(SkeletonType skeletonType, ArmorType armorType,
+            bool isMistlandsArmor = false)
         {
             var inventory = Player.m_localPlayer.GetInventory();
             
@@ -802,6 +833,10 @@ namespace ChebsNecromancy.Minions.Skeletons
                     break;
                 case ArmorType.BlackMetal:
                     inventory.RemoveItem("$item_blackmetal", BasePlugin.ArmorBlackIronRequiredConfig.Value);
+                    if (isMistlandsArmor)
+                    {
+                        inventory.RemoveItem("$item_carapace", BasePlugin.ArmorCarapaceRequiredConfig.Value);
+                    }
                     break;
             }
         }

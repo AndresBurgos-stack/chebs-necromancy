@@ -43,7 +43,7 @@ namespace ChebsNecromancy
     {
         public const string PluginGuid = "com.chebgonaz.ChebsNecromancy";
         public const string PluginName = "Chebs Necromancy Enhanced";
-        public const string PluginVersion = "1.2.2";
+        public const string PluginVersion = "1.1.1";
         private const string ConfigFileName = PluginGuid + ".cfg";
         private static readonly string ConfigFileFullPath = Path.Combine(Paths.ConfigPath, ConfigFileName);
 
@@ -64,7 +64,6 @@ namespace ChebsNecromancy
         public const string NecromancySkillIdentifier = "friendlyskeletonwand_necromancy_skill";
 
         private readonly SpectralShroud spectralShroudItem = new();
-        private readonly WolfCloak wolfCloakItem = new();
         private readonly NecromancerHood necromancersHoodItem = new();
         private readonly NecromancerCape necromancerCapeItem = new();
 
@@ -97,6 +96,8 @@ namespace ChebsNecromancy
         public static ConfigEntry<int> ArmorBronzeRequiredConfig;
         public static ConfigEntry<int> ArmorIronRequiredConfig;
         public static ConfigEntry<int> ArmorBlackIronRequiredConfig;
+        public static ConfigEntry<int> ArmorCarapaceRequiredConfig;
+        public static ConfigEntry<string> ArmorCarapaceHelmetPrefabConfig;
         public static ConfigEntry<int> NeedlesRequiredConfig;
 
         public static ConfigEntry<bool> DurabilityDamage;
@@ -190,22 +191,6 @@ namespace ChebsNecromancy
                     
                     ItemManager.Instance.AddItem(spectralShroudItem.GetCustomItemFromPrefab(spectralShroudPrefab));
                 }
-
-                // set wolf cloak up
-                var wolfCapePrefab = PrefabManager.Instance.GetPrefab("CapeWolf");
-                if (wolfCapePrefab != null)
-                {
-                    var wolfCloakPrefab = PrefabManager.Instance.CreateClonedPrefab(WolfCloak.CloakItemName, wolfCapePrefab);
-                    var wolfCustomItem = wolfCloakItem.GetCustomItemFromPrefab(wolfCloakPrefab);
-                    if (wolfCustomItem != null)
-                    {
-                        ItemManager.Instance.AddItem(wolfCustomItem);
-                        var cloakIcons = wolfCloakPrefab.GetComponent<ItemDrop>().m_itemData.m_shared.m_icons;
-                        WolfForm.RegisterStatusEffect(cloakIcons != null && cloakIcons.Length > 0 ? cloakIcons[0] : null);
-                        WolfForm.CreateButtons();
-                    }
-                }
-                else Jotunn.Logger.LogError("failed to get CapeWolf prefab");
 
                 // clone vanilla Ashlands creatures into tameable Charred minions.
                 // Unlike skeletons/draugr these don't need a custom asset-bundle
@@ -376,7 +361,6 @@ namespace ChebsNecromancy
             wands.ForEach(wand => wand.UpdateRecipe());
             necromancersHoodItem.UpdateRecipe();
             spectralShroudItem.UpdateRecipe();
-            wolfCloakItem.UpdateRecipe();
 
             SpiritPylon.UpdateRecipe();
             RefuelerPylon.UpdateRecipe();
@@ -469,6 +453,24 @@ namespace ChebsNecromancy
             ArmorBlackIronRequiredConfig = Config.Bind("General (Server Synced)", "ArmorBlackIronRequired",
                 1, new ConfigDescription("The amount of Black Metal required to craft a minion in black iron armor.",
                     null,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            // Mistlands/Carapace is an extra, on-top-of-Black-Metal upgrade for the
+            // Skeleton Warrior - see SkeletonWand's Warrior branch. Not tied to
+            // ChebGonazMinion.ArmorType (an external enum we can't extend), so it's
+            // its own standalone resource check, consumed in addition to Black Metal.
+            ArmorCarapaceRequiredConfig = Config.Bind("General (Server Synced)", "ArmorCarapaceRequired",
+                5, new ConfigDescription(
+                    "The amount of Carapace required, on top of Black Metal, to craft a Skeleton Warrior in Mistlands/Carapace armor instead of Black Iron armor.", null,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            // HelmetCarapace didn't look right on the skeleton rig. Defaults to the
+            // plain vanilla Iron helmet (already proven to fit fine), while chest/
+            // legs stay Carapace. Change this to any other helmet prefab name if
+            // you want to try something else without needing a code change.
+            ArmorCarapaceHelmetPrefabConfig = Config.Bind("General (Server Synced)", "ArmorCarapaceHelmetPrefab",
+                "HelmetIron", new ConfigDescription(
+                    "The helmet prefab used with Carapace/Mistlands armor on the Skeleton Warrior (chest/legs always stay Carapace). HelmetCarapace itself didn't look good on this rig, hence the Iron helmet default.", null,
                     new ConfigurationManagerAttributes { IsAdminOnly = true }));
 
             NeedlesRequiredConfig = Config.Bind("General (Server Synced)", "NeedlesRequired",
@@ -565,8 +567,6 @@ namespace ChebsNecromancy
             wands.ForEach(w => w.CreateConfigs(this));
 
             spectralShroudItem.CreateConfigs(this);
-            wolfCloakItem.CreateConfigs(this);
-            WolfForm.CreateConfigs(this);
             necromancersHoodItem.CreateConfigs(this);
 
             SpiritPylon.CreateConfigs(this);
@@ -1045,11 +1045,7 @@ namespace ChebsNecromancy
                 {
                     PvPOptionsGUI.TogglePanel();
                 }
-
-                WolfForm.HandleUpdate();
             }
-
-            WolfForm.PollVisuals();
 
             spectralShroudItem.DoOnUpdate();
         }

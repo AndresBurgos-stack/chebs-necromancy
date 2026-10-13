@@ -1,12 +1,6 @@
 # Chebs Necromancy Enhanced
 
-Fork of [Cheb's Necromancy](https://github.com/jpw1991/chebs-necromancy) focused on Ashlands Charred minions (Warrior / Archer / Twitcher) via a new Charred Wand, armored elite tiers and full config. Thunderstore package: `ChebsNecromancyEnhanced` v1.2.1+.
-
-## New in Enhanced: Wolf Form (1.2.0+)
-
-- Craftable **Wolf Cloak** (forge level 2: WolfPelt x10, WolfFang x4, TrophyWolf x1) — press **K** to take wolf form for **60s** (cooldown **120s**).
-- Faster (+80% move speed), silent and hard to spot: enemies ignore you unless you strike first; bite attack deals your weapon damage; dodge and equipment changes are locked while transformed, with HUD timer and poof effect.
-- Devour **raw meat** while transformed: it is consumed as its **cooked** counterpart in the vanilla food bar (instant HP/stamina bonus as fallback).
+Fork of [Cheb's Necromancy](https://github.com/jpw1991/chebs-necromancy) focused on Ashlands Charred minions (Warrior / Archer / Twitcher) via a new Charred Wand, armored elite tiers and full config. Thunderstore package: `ChebsNecromancyEnhanced` v5.3.1+.
 
 ## Confused? Try the [wiki](https://github.com/jpw1991/chebs-necromancy/wiki).
 
@@ -337,12 +331,4 @@ Date | Version | Notes
 25/11/2022 | 1.0.0 | Release
 
 </details>
-
-## Building on Windows (build.py)
-
-Requirements: .NET SDK 8+, git, python3, Valheim + BepInEx (game folder or Thunderstore/r2modman/Gale profile).
-
-- Build: `py build.py` (or `--config Debug`). Auto-detects paths, resyncs with `git pull --ff-only`, validates the environment, restores NuGet, builds, reports warnings/errors and prints the fresh DLL path.
-- Overrides: `VALHEIM_DIR` and `BEPINEX_DIR` env vars if autodetection misses something.
-- Proposing changes: `py build.py --pr "title"` builds first and **only on green build** opens a PR from a new `build/...` branch. Never pushes to master/main: merges are manual. `--dry-run` previews without doing anything.
 

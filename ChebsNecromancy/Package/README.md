@@ -9,6 +9,12 @@ Fork of [Cheb's Necromancy](https://github.com/jpw1991/chebs-necromancy) focused
 - Deterministic base models, commandable minions with owner/status hover, necromancy-scaled HP/tiers, out-of-combat regen, configurable resists and XP — everything server-synced and tunable.
 - Visual identity: blue StaffRedTroll-based wand (model + icon) and blue soul/eyes particles behind `CharredCustomColors` (+ HTML color selector).
 
+## New in 1.3.0: Dark Necromancer Set
+
+- Craftable **Dark Necromancer Hood** (Black Forge level 3: FlametalNew x16, Eitr x4, AsksvinHide x3, CharredBone x2): armor 38, -2% move speed, **+15 Necromancy**.
+- Craftable **Shadowed Ash Cape** (Black Forge level 3: FlametalNew x10, CelestialFeather x10, CharredBone x5, Eitr x5): armor 4, frost resistant, **+15 Necromancy** (+30 wearing both).
+- Both tinted dark by code with configurable HTML colors and runtime-darkened icons; no custom bundle needed.
+
 ## Confused? Try the [wiki](https://github.com/jpw1991/chebs-necromancy/wiki).
 
 ## About this fork

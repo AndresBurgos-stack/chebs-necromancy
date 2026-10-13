@@ -43,7 +43,7 @@ namespace ChebsNecromancy
     {
         public const string PluginGuid = "com.chebgonaz.ChebsNecromancy";
         public const string PluginName = "Chebs Necromancy Enhanced";
-        public const string PluginVersion = "1.2.4";
+        public const string PluginVersion = "1.3.0";
         private const string ConfigFileName = PluginGuid + ".cfg";
         private static readonly string ConfigFileFullPath = Path.Combine(Paths.ConfigPath, ConfigFileName);
 
@@ -66,6 +66,8 @@ namespace ChebsNecromancy
         private readonly SpectralShroud spectralShroudItem = new();
         private readonly NecromancerHood necromancersHoodItem = new();
         private readonly NecromancerCape necromancerCapeItem = new();
+        private readonly DarkNecromancerHood darkHoodItem = new();
+        private readonly ShadowedAshCape shadowCapeItem = new();
 
         private Material spectralShroudMaterial;
         private Sprite spectralShroudSprite;
@@ -73,6 +75,7 @@ namespace ChebsNecromancy
         private float inputDelay = 0;
 
         public static SE_Stats SetEffectNecromancyArmor, SetEffectNecromancyArmor2;
+        public static SE_Stats SetEffectNecromancyArmor3, SetEffectNecromancyArmor4;
 
         // Global Config Acceptable Values
         public AcceptableValueList<bool> BoolValue = new(true, false);
@@ -189,6 +192,24 @@ namespace ChebsNecromancy
                     
                     ItemManager.Instance.AddItem(spectralShroudItem.GetCustomItemFromPrefab(spectralShroudPrefab));
                 }
+
+                // set dark necromancer hood up (Ashlands Eitr hood clone)
+                var mageHoodPrefab = PrefabManager.Instance.GetPrefab(DarkNecromancerHood.VanillaPrefabName);
+                if (mageHoodPrefab != null)
+                {
+                    var darkHoodPrefab = PrefabManager.Instance.CreateClonedPrefab(DarkNecromancerHood.HoodItemName, mageHoodPrefab);
+                    ItemManager.Instance.AddItem(darkHoodItem.GetCustomItemFromPrefab(darkHoodPrefab));
+                }
+                else Jotunn.Logger.LogError($"failed to get {DarkNecromancerHood.VanillaPrefabName} prefab");
+
+                // set shadowed ash cape up (Ashlands ash cape clone)
+                var ashCapePrefab = PrefabManager.Instance.GetPrefab(ShadowedAshCape.VanillaPrefabName);
+                if (ashCapePrefab != null)
+                {
+                    var shadowCapePrefab = PrefabManager.Instance.CreateClonedPrefab(ShadowedAshCape.CapeItemName, ashCapePrefab);
+                    ItemManager.Instance.AddItem(shadowCapeItem.GetCustomItemFromPrefab(shadowCapePrefab));
+                }
+                else Jotunn.Logger.LogError($"failed to get {ShadowedAshCape.VanillaPrefabName} prefab");
 
                 // clone vanilla Ashlands creatures into tameable Charred minions.
                 // Unlike skeletons/draugr these don't need a custom asset-bundle
@@ -359,6 +380,8 @@ namespace ChebsNecromancy
             wands.ForEach(wand => wand.UpdateRecipe());
             necromancersHoodItem.UpdateRecipe();
             spectralShroudItem.UpdateRecipe();
+            darkHoodItem.UpdateRecipe();
+            shadowCapeItem.UpdateRecipe();
 
             SpiritPylon.UpdateRecipe();
             RefuelerPylon.UpdateRecipe();
@@ -548,6 +571,8 @@ namespace ChebsNecromancy
 
             spectralShroudItem.CreateConfigs(this);
             necromancersHoodItem.CreateConfigs(this);
+            darkHoodItem.CreateConfigs(this);
+            shadowCapeItem.CreateConfigs(this);
 
             SpiritPylon.CreateConfigs(this);
             RefuelerPylon.CreateConfigs(this);
@@ -998,6 +1023,14 @@ namespace ChebsNecromancy
 
             SetEffectNecromancyArmor2.m_skillLevel = SkillManager.Instance.GetSkill(NecromancySkillIdentifier).m_skill;
             SetEffectNecromancyArmor2.m_skillLevelModifier = NecromancerHood.NecromancySkillBonus.Value;
+
+            SetEffectNecromancyArmor3 = DarkNecromancerHood.CreateSetEffect();
+            SetEffectNecromancyArmor3.m_skillLevel = SkillManager.Instance.GetSkill(NecromancySkillIdentifier).m_skill;
+            SetEffectNecromancyArmor3.m_skillLevelModifier = DarkNecromancerHood.NecromancySkillBonus.Value;
+
+            SetEffectNecromancyArmor4 = ShadowedAshCape.CreateSetEffect();
+            SetEffectNecromancyArmor4.m_skillLevel = SkillManager.Instance.GetSkill(NecromancySkillIdentifier).m_skill;
+            SetEffectNecromancyArmor4.m_skillLevelModifier = ShadowedAshCape.NecromancySkillBonus.Value;
         }
         
         private void Update()

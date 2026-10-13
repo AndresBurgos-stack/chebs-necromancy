@@ -1,6 +1,11 @@
 # Chebs Necromancy Enhanced
 
-Fork of [Cheb's Necromancy](https://github.com/jpw1991/chebs-necromancy) focused on Ashlands Charred minions (Warrior / Archer / Twitcher) via a new Charred Wand, armored elite tiers and full config. Thunderstore package: `ChebsNecromancyEnhanced` v5.3.1+.
+Fork of [Cheb's Necromancy](https://github.com/jpw1991/chebs-necromancy) focused on Ashlands Charred minions (Warrior / Archer / Twitcher) via a new Charred Wand, armored elite tiers and full config. Thunderstore package: `ChebsNecromancyEnhanced` v1.3.0+.
+
+## New in Enhanced: Dark Necromancer Set (1.3.0+)
+
+- Craftable **Dark Necromancer Hood** (Black Forge level 3: FlametalNew x16, Eitr x4, AsksvinHide x3, CharredBone x2): armor 38, -2% move speed, **+15 Necromancy**.
+- Craftable **Shadowed Ash Cape** (Black Forge level 3: FlametalNew x10, CelestialFeather x10, CharredBone x5, Eitr x5): armor 4, frost resistant, **+15 Necromancy** (+30 wearing both).
 
 ## Confused? Try the [wiki](https://github.com/jpw1991/chebs-necromancy/wiki).
 

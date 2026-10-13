@@ -419,14 +419,26 @@ namespace ChebsNecromancy.Items.Wands
             };
 
             // Twitchers never wear armor: always unarmored, Shift or not.
-            var armored = charredType != CharredMinion.CharredType.Twitcher
-                && ExtraResourceConsumptionUnlocked
-                && UndeadMinion.CanSpawn(CharredMinion.ArmorUpgradeCost, inventory, out _);
+            var armorVariant = CharredMinion.ArmorVariant.None;
+            if (charredType != CharredMinion.CharredType.Twitcher && ExtraResourceConsumptionUnlocked)
+            {
+                // Flametal keeps exact original priority/behaviour for Warrior and Archer.
+                if (UndeadMinion.CanSpawn(CharredMinion.ArmorUpgradeCost, inventory, out _))
+                {
+                    armorVariant = CharredMinion.ArmorVariant.Flametal;
+                }
+                // Warrior-only fallback: no Flametal on hand, but enough Blood Gold.
+                else if (charredType == CharredMinion.CharredType.Warrior
+                    && UndeadMinion.CanSpawn(CharredMinion.ProtectorArmorUpgradeCost, inventory, out _))
+                {
+                    armorVariant = CharredMinion.ArmorVariant.Protector;
+                }
+            }
 
-            SpawnCharred(playerNecromancyLevel, charredType, armored);
+            SpawnCharred(playerNecromancyLevel, charredType, armorVariant);
         }
 
-        private void SpawnCharred(float playerNecromancyLevel, CharredMinion.CharredType charredType, bool armored)
+        private void SpawnCharred(float playerNecromancyLevel, CharredMinion.CharredType charredType, CharredMinion.ArmorVariant armorVariant)
         {
             if (!CharredAllowed.Value) return;
 
@@ -462,9 +474,9 @@ namespace ChebsNecromancy.Items.Wands
                 quality = CharredMinion.TierTwoQuality.Value;
             }
 
-            CharredMinion.ConsumeResources(charredType, armored);
+            CharredMinion.ConsumeResources(charredType, armorVariant);
 
-            CharredMinion.InstantiateCharred(quality, playerNecromancyLevel, charredType, armored);
+            CharredMinion.InstantiateCharred(quality, playerNecromancyLevel, charredType, armorVariant);
         }
     }
 }

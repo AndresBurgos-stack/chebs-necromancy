@@ -351,6 +351,43 @@ namespace ChebsNecromancy.Minions.Skeletons
             }
         }
 
+        // Same pattern as CharredMinion.ApplyBonusResistances, just scoped to the
+        // Mistlands/Carapace-armored Skeleton Warrior via its own separate config.
+        private void ApplyMistlandsResistances()
+        {
+            var character = GetComponent<Character>();
+            if (character == null || string.IsNullOrWhiteSpace(BasePlugin.MistlandsBonusResistancesConfig.Value)) return;
+
+            foreach (var entry in BasePlugin.MistlandsBonusResistancesConfig.Value.Split(','))
+            {
+                var parts = entry.Split(':');
+                if (parts.Length != 2) continue;
+                try
+                {
+                    var type = (HitData.DamageType)System.Enum.Parse(typeof(HitData.DamageType), parts[0].Trim(), true);
+                    var modifier = (HitData.DamageModifier)System.Enum.Parse(typeof(HitData.DamageModifier), parts[1].Trim(), true);
+                    var mods = character.m_damageModifiers;
+                    switch (type)
+                    {
+                        case HitData.DamageType.Blunt: mods.m_blunt = modifier; break;
+                        case HitData.DamageType.Slash: mods.m_slash = modifier; break;
+                        case HitData.DamageType.Pierce: mods.m_pierce = modifier; break;
+                        case HitData.DamageType.Chop: mods.m_chop = modifier; break;
+                        case HitData.DamageType.Pickaxe: mods.m_pickaxe = modifier; break;
+                        case HitData.DamageType.Fire: mods.m_fire = modifier; break;
+                        case HitData.DamageType.Frost: mods.m_frost = modifier; break;
+                        case HitData.DamageType.Lightning: mods.m_lightning = modifier; break;
+                        case HitData.DamageType.Poison: mods.m_poison = modifier; break;
+                        case HitData.DamageType.Spirit: mods.m_spirit = modifier; break;
+                    }
+                }
+                catch (System.Exception)
+                {
+                    Logger.LogWarning($"SkeletonMinion: ignoring malformed Mistlands resistance entry '{entry.Trim()}'.");
+                }
+            }
+        }
+
         public virtual void ScaleStats(float necromancyLevel)
         {
             var character = GetComponent<Character>();
@@ -365,9 +402,14 @@ namespace ChebsNecromancy.Minions.Skeletons
             character.SetHealth(health);
         }
 
-        public virtual void ScaleEquipment(float necromancyLevel, SkeletonType skeletonType, ArmorType armorType)
+        // isMistlandsArmor defaults to false so every existing caller (DraugrMinion
+        // doesn't call this one, but OrbOfBeckoning does) keeps working unchanged.
+        // Only SkeletonWand's Warrior branch ever passes true.
+        public virtual void ScaleEquipment(float necromancyLevel, SkeletonType skeletonType, ArmorType armorType,
+            bool isMistlandsArmor = false)
         {
             var defaultItems = new List<GameObject>();
+            var needsCarapaceHelmetScaleFix = false;
 
             var humanoid = GetComponent<Humanoid>();
             if (humanoid == null)
@@ -488,12 +530,32 @@ namespace ChebsNecromancy.Minions.Skeletons
                     Emblem = InternalName.GetName(emblem);
                     break;
                 case ArmorType.BlackMetal:
-                    defaultItems.AddRange(new[] {
-                        helmetPrefab,
-                        ZNetScene.instance.GetPrefab("ChebGonaz_ArmorBlackIronChest"),
-                        ZNetScene.instance.GetPrefab("ChebGonaz_ArmorBlackIronLegs"),
-                        ZNetScene.instance.GetPrefab("CapeLox"),
-                    });
+                    // Scoped strictly to WarriorTier4 so Poison/Mage/Priest Tier3
+                    // (which also map to ArmorType.BlackMetal elsewhere) are never
+                    // affected by this, even if isMistlandsArmor were somehow true
+                    // for them.
+                    if (isMistlandsArmor && skeletonType == SkeletonType.WarriorTier4)
+                    {
+                        // Helmet is NOT added here - it's equipped separately, on its
+                        // own, right after the shared GiveDefaultItems() call below,
+                        // so we can diff before/after that one specific equip and
+                        // know exactly which new object is the helmet to scale up.
+                        defaultItems.AddRange(new[] {
+                            ZNetScene.instance.GetPrefab("ArmorCarapaceChest"),
+                            ZNetScene.instance.GetPrefab("ArmorCarapaceLegs"),
+                            ZNetScene.instance.GetPrefab("CapeLox"),
+                        });
+                        needsCarapaceHelmetScaleFix = true;
+                    }
+                    else
+                    {
+                        defaultItems.AddRange(new[] {
+                            helmetPrefab,
+                            ZNetScene.instance.GetPrefab("ChebGonaz_ArmorBlackIronChest"),
+                            ZNetScene.instance.GetPrefab("ChebGonaz_ArmorBlackIronLegs"),
+                            ZNetScene.instance.GetPrefab("CapeLox"),
+                        });
+                    }
                     if (BasePlugin.DurabilityDamage.Value) { wand.m_durability -= BasePlugin.DurabilityDamageBlackIron.Value; }
                     Emblem = InternalName.GetName(emblem);
                     break;
@@ -502,6 +564,11 @@ namespace ChebsNecromancy.Minions.Skeletons
             humanoid.m_defaultItems = humanoid.m_defaultItems.Union(defaultItems).ToArray();
             
             humanoid.GiveDefaultItems();
+
+            if (needsCarapaceHelmetScaleFix)
+            {
+                StartCoroutine(AddAndScaleCarapaceHelmetDeferred(humanoid));
+            }
             
             if (BasePlugin.DurabilityDamage.Value)
             {
@@ -528,9 +595,67 @@ namespace ChebsNecromancy.Minions.Skeletons
                 }
             }
         }
-        
+
+        // HelmetCarapace renders too small on this rig compared to the known-good
+        // Iron helmet, and guessing its instantiated name ("HelmetCarapace") didn't
+        // match anything real (0 transforms found) - same lesson learned twice now
+        // with VisEquipment field names on the Charred. Diffing is the only
+        // technique that's actually worked reliably (Charred gold tint): find
+        // whatever Transforms are new since right before this one equip call, then
+        // scale only the new "roots" (objects whose parent already existed, ie. the
+        // actual attachment points), not every new child mesh individually - scaling
+        // a root scales its whole hierarchy together, so the helmet grows as one
+        // piece instead of stretching each part from a different pivot.
+        // Equips and scales the Carapace helmet entirely inside this one coroutine,
+        // with a settle-wait on BOTH sides of the equip call: first so chest/legs/
+        // cape AND the pre-existing weapon/shield fully finish rendering before we
+        // take the "before" snapshot (last attempt's bug - the weapon/shield hadn't
+        // rendered yet when "before" was taken synchronously, so they looked "new"
+        // too and got scaled by mistake), then again so the helmet itself has
+        // rendered before we take the "after" snapshot and diff.
+        private IEnumerator AddAndScaleCarapaceHelmetDeferred(Humanoid humanoid)
+        {
+            yield return null;
+            yield return null;
+            yield return new WaitForSeconds(0.3f);
+            if (this == null) yield break;
+
+            var beforeNames = new HashSet<string>();
+            foreach (var t in GetComponentsInChildren<Transform>(true)) beforeNames.Add(t.name);
+
+            var carapaceHelmetPrefab = ZNetScene.instance.GetPrefab(BasePlugin.ArmorCarapaceHelmetPrefabConfig.Value);
+            if (carapaceHelmetPrefab == null)
+            {
+                Logger.LogError($"AddAndScaleCarapaceHelmetDeferred: prefab {BasePlugin.ArmorCarapaceHelmetPrefabConfig.Value} not found! Check ArmorCarapaceHelmetPrefab.");
+                yield break;
+            }
+            humanoid.GiveDefaultItem(carapaceHelmetPrefab);
+
+            yield return null;
+            yield return null;
+            yield return new WaitForSeconds(0.3f);
+            if (this == null) yield break;
+
+            var scale = BasePlugin.ArmorCarapaceHelmetScaleConfig.Value;
+            var fixedCount = 0;
+            // DIAGNOSTIC: log every genuinely-new name (whether or not it passes the
+            // "is a root" filter) so we can see exactly what candidates exist instead
+            // of continuing to guess blind.
+            var allNewNames = new List<string>();
+            foreach (var t in GetComponentsInChildren<Transform>(true))
+            {
+                if (beforeNames.Contains(t.name)) continue; // this name already existed - a recreated, unchanged item
+                allNewNames.Add($"{t.name} (parent: {(t.parent != null ? t.parent.name : "null")})");
+                if (t.parent != null && !beforeNames.Contains(t.parent.name)) continue; // not a root of the new hierarchy
+                t.localScale *= scale;
+                fixedCount++;
+            }
+            Logger.LogWarning($"SkeletonMinion: Carapace helmet scale fix applied to {fixedCount} transform(s), x{scale}.");
+            Logger.LogWarning($"SkeletonMinion: all new names since before-snapshot: [{string.Join(" | ", allNewNames)}]");
+        }
+
         public static void InstantiateSkeleton(int quality, float playerNecromancyLevel,
-            SkeletonType skeletonType, ArmorType armorType)
+            SkeletonType skeletonType, ArmorType armorType, bool isMistlandsArmor = false)
         {
             if (skeletonType is SkeletonType.None) return;
             
@@ -548,7 +673,11 @@ namespace ChebsNecromancy.Minions.Skeletons
             var spawnedChar = Instantiate(prefab,
                 transform.position + transform.forward * 2f + Vector3.up, Quaternion.identity);
             var character = spawnedChar.GetComponent<Character>();
-            character.SetLevel(quality);
+            // Extra star levels raise effective damage output for the Mistlands/
+            // Carapace-armored Warrior (its weapon itself can't be swapped - same
+            // "baked into the prefab" limitation discussed for the Charred).
+            var isMistlandsWarrior = isMistlandsArmor && skeletonType == SkeletonType.WarriorTier4;
+            character.SetLevel(isMistlandsWarrior ? quality + BasePlugin.MistlandsExtraLevelsConfig.Value : quality);
 
             spawnedChar.AddComponent<FreshMinion>();
 
@@ -562,8 +691,16 @@ namespace ChebsNecromancy.Minions.Skeletons
                 _ => spawnedChar.AddComponent<SkeletonMinion>()
             };
             minion.SetCreatedAtLevel(playerNecromancyLevel);
-            minion.ScaleEquipment(playerNecromancyLevel, skeletonType, armorType);
+            minion.ScaleEquipment(playerNecromancyLevel, skeletonType, armorType, isMistlandsArmor);
             minion.ScaleStats(playerNecromancyLevel);
+
+            if (isMistlandsWarrior)
+            {
+                var boostedHealth = character.GetMaxHealth() * BasePlugin.MistlandsHealthMultiplierConfig.Value;
+                character.SetMaxHealth(boostedHealth);
+                character.SetHealth(boostedHealth);
+                minion.ApplyMistlandsResistances();
+            }
 
             var eyeColor = Options.Options.EyeColor;
             var boneColor = Options.Options.BoneColor;
@@ -690,6 +827,10 @@ namespace ChebsNecromancy.Minions.Skeletons
                     break;
                 case ArmorType.BlackMetal:
                     AddOrUpdateDrop(characterDrop, "BlackMetal", BasePlugin.ArmorBlackIronRequiredConfig.Value);
+                    if (isMistlandsArmor)
+                    {
+                        AddOrUpdateDrop(characterDrop, "Carapace", BasePlugin.ArmorCarapaceRequiredConfig.Value);
+                    }
                     break;
             }
 
@@ -700,7 +841,8 @@ namespace ChebsNecromancy.Minions.Skeletons
             minion.RecordDrops(characterDrop);
         }
         
-        public static void ConsumeResources(SkeletonType skeletonType, ArmorType armorType)
+        public static void ConsumeResources(SkeletonType skeletonType, ArmorType armorType,
+            bool isMistlandsArmor = false)
         {
             var inventory = Player.m_localPlayer.GetInventory();
             
@@ -802,6 +944,10 @@ namespace ChebsNecromancy.Minions.Skeletons
                     break;
                 case ArmorType.BlackMetal:
                     inventory.RemoveItem("$item_blackmetal", BasePlugin.ArmorBlackIronRequiredConfig.Value);
+                    if (isMistlandsArmor)
+                    {
+                        inventory.RemoveItem("$item_carapace", BasePlugin.ArmorCarapaceRequiredConfig.Value);
+                    }
                     break;
             }
         }

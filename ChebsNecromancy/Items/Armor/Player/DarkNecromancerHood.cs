@@ -16,7 +16,7 @@ namespace ChebsNecromancy.Items.Armor.Player
 
         public override string ItemName => HoodItemName;
         public override string PrefabName => VanillaPrefabName;
-        protected override string DefaultRecipe => "FlametalNew:16,Eitr:4,AsksvinHide:3,CharredBone:2";
+        protected override string DefaultRecipe => "FlametalNew:16,Eitr:4,AskHide:3,CharredBone:2";
 
         public static ConfigEntry<bool> Allowed;
         public static ConfigEntry<CraftingTable> CraftingStationRequired;

@@ -1,6 +1,6 @@
 ﻿{
   "name": "ChebsNecromancyEnhanced",
-  "description": "Chebs Necromancy Enhanced: Ashlands Charred minions (Warrior/Archer/Twitcher) via a new Charred Wand with armored elite tiers, visual customization, minion dance, Dark Necromancer Hood and Shadowed Ash Cape with Necromancy skill bonuses - full config. Fork of Cheb's Necromancy.",
+  "description": "Chebs Necromancy Enhanced: Charred Wand with armored elites, minion dance, Dark Hood + Ash Cape with Necromancy bonuses. Full config. Fork of Cheb's Necromancy.",
   "version_number": "1.3.0",
   "website_url": "https://github.com/AndresBurgos-stack/chebs-necromancy",
   "dependencies": [

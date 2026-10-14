@@ -101,6 +101,10 @@ namespace ChebsNecromancy
         public static ConfigEntry<int> ArmorBlackIronRequiredConfig;
         public static ConfigEntry<int> ArmorCarapaceRequiredConfig;
         public static ConfigEntry<string> ArmorCarapaceHelmetPrefabConfig;
+        public static ConfigEntry<float> ArmorCarapaceHelmetScaleConfig;
+        public static ConfigEntry<float> ArmorCarapaceHelmetLiftConfig;
+        public static ConfigEntry<float> ArmorCarapaceHelmetPitchConfig;
+        public static ConfigEntry<float> ArmorCarapaceHelmetHeightConfig;
 
         // Extra power for the Mistlands/Carapace-armored Skeleton Warrior, on top of
         // its real higher-armor-rating gear. Weapon damage itself can't be touched
@@ -110,6 +114,9 @@ namespace ChebsNecromancy
         public static ConfigEntry<float> MistlandsHealthMultiplierConfig;
         public static ConfigEntry<int> MistlandsExtraLevelsConfig;
         public static ConfigEntry<string> MistlandsBonusResistancesConfig;
+        public static ConfigEntry<string> WarriorTier4WeaponsConfig;
+        public static ConfigEntry<string> WarriorTier4ShieldConfig;
+        public static ConfigEntry<bool> WarriorTier4WeaponDiag;
         public static ConfigEntry<int> NeedlesRequiredConfig;
 
         public static ConfigEntry<bool> DurabilityDamage;
@@ -305,6 +312,7 @@ namespace ChebsNecromancy
             harmony.PatchAll();
 
             CommandManager.Instance.AddConsoleCommand(new KillAllMinions());
+            CommandManager.Instance.AddConsoleCommand(new FindDeadPrefabs());
             CommandManager.Instance.AddConsoleCommand(new SummonAllMinions());
             CommandManager.Instance.AddConsoleCommand(new KillAllNeckros());
             CommandManager.Instance.AddConsoleCommand(new SetMinionOwnership());
@@ -496,13 +504,42 @@ namespace ChebsNecromancy
                     "The amount of Carapace required, on top of Black Metal, to craft a Skeleton Warrior in Mistlands/Carapace armor instead of Black Iron armor.", null,
                     new ConfigurationManagerAttributes { IsAdminOnly = true }));
 
-            // HelmetCarapace didn't look right on the skeleton rig. Defaults to the
-            // plain vanilla Iron helmet (already proven to fit fine), while chest/
-            // legs stay Carapace. Change this to any other helmet prefab name if
-            // you want to try something else without needing a code change.
+            // Unity-authored helmet first (bundle chebgonaz-carapace, guide:
+            // UNITY_HELMET_GUIDE.md): hand-fitted, ships ready, no adjust pass
+            // touches it. Then vanilla Carapace, then black iron. Custom and
+            // iron rigs need no scale/lift (vanilla-only knobs below).
             ArmorCarapaceHelmetPrefabConfig = Config.Bind("General (Server Synced)", "ArmorCarapaceHelmetPrefab",
-                "HelmetCarapace", new ConfigDescription(
-                    "The helmet prefab used with Carapace/Mistlands armor on the Skeleton Warrior (chest/legs always stay Carapace). Must be a prefab that fits the skeleton rig - HelmetCarapace renders small on it, HelmetIron is the proven alternative.", null,
+                "ChebGonaz_HelmetCarapaceSkeleton", new ConfigDescription(
+                    "Helmet prefab for carapace wearers. Priority: configured (Unity bundle) -> vanilla HelmetCarapace -> black iron.", null,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            // Only kept for legacy vanilla-helmet tuning. Custom skeleton-rigged
+            // helmet must ship at correct size with scale 1.0.
+            ArmorCarapaceHelmetScaleConfig = Config.Bind("General (Server Synced)", "ArmorCarapaceHelmetScale",
+                1.0f, new ConfigDescription(
+                    "Scale multiplier applied to the Carapace helmet on the Skeleton Warrior. 1.0 = no change (correct for custom skeleton-rigged helmet).", null,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            // Vanilla HelmetCarapace spawns embedded inside the skeleton skull
+            // (player-rigged mesh on a skeleton head anchor): scaling grows it
+            // in place but never moves it out. Lift shifts the equipped helmet
+            // along its local Y so it sits on the crown instead of inside.
+            // Tune live: change value, re-summon, observe. Negative = down.
+            ArmorCarapaceHelmetLiftConfig = Config.Bind("General (Server Synced)", "ArmorCarapaceHelmetLift",
+                0.25f, new ConfigDescription(
+                    "Meters to lift the Carapace helmet along its local Y after equipping (0.25 = a quarter meter up). 0 = no lift.", null,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            // OBJ bind space aims the visor at the floor: pitch it forward.
+            // Assigned (never accumulated). Tune live with F1, re-summon.
+            ArmorCarapaceHelmetPitchConfig = Config.Bind("General (Server Synced)", "ArmorCarapaceHelmetPitch",
+                -90f, new ConfigDescription(
+                    "Degrees about X applied to a Unity-built carapace helmet. -90 pitches a floor-facing visor forward; use +90 if it ends up backwards. Iron/vanilla helmets ignore it.", null,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            ArmorCarapaceHelmetHeightConfig = Config.Bind("General (Server Synced)", "ArmorCarapaceHelmetHeight",
+                0f, new ConfigDescription(
+                    "Vertical meters added to a Unity-built carapace helmet (fitted base). Negative lowers it (e.g. -0.08). Tune live, re-summon. Iron/vanilla helmets ignore it.", null,
                     new ConfigurationManagerAttributes { IsAdminOnly = true }));
 
             MistlandsHealthMultiplierConfig = Config.Bind("General (Server Synced)", "MistlandsHealthMultiplier",
@@ -524,6 +561,26 @@ namespace ChebsNecromancy
             MistlandsBonusResistancesConfig = Config.Bind("General (Server Synced)", "MistlandsBonusResistances",
                 "Pierce:Resistant", new ConfigDescription(
                     "Comma-delimited DamageType:DamageModifier pairs applied only to the Mistlands/Carapace-armored Skeleton Warrior, eg. 'Pierce:Resistant,Frost:VeryResistant'. Valid DamageType: Blunt, Slash, Pierce, Chop, Pickaxe, Fire, Frost, Lightning, Poison, Spirit. Valid DamageModifier: Normal, Resistant, VeryResistant, Weak, VeryWeak, Immune, Ignore. Leave blank for none.", null,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            // Tier4 (BlackMetal) weapon pool: comma-delimited vanilla weapon prefab
+            // names rolled randomly via the prefab's baked m_randomWeapon (same
+            // mechanism as the original custom weapons, so no relog issues).
+            // Real vanilla names (Claude-verified): SwordBlackmetal, AxeBlackMetal.
+            // MaceNeedle (Porcupine, blunt Plains) fills the blunt slot; the swap
+            // logs every missing name, so an unverified entry can never break
+            // anything - worst case that slot is skipped.
+            WarriorTier4WeaponsConfig = Config.Bind("General (Server Synced)", "WarriorTier4Weapons",
+                "SwordBlackmetal,AxeBlackMetal,MaceNeedle", new ConfigDescription(
+                    "Comma-delimited vanilla weapon prefab names for WarriorTier4 (BlackMetal/Caparazon tier): vanilla look + damage, with per-instance skeleton-compatible attack animation. Leave blank to keep the bundle's custom blackmetal weapons.", null,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            WarriorTier4WeaponDiag = Config.Bind("General (Client)", "WarriorTier4WeaponDiag",
+                true, new ConfigDescription("Log-only diagnostic at load: dumps the factory weapon fields (m_randomWeapon, m_defaultItems, ...) of every Warrior tier prefab before any swap, plus whether each configured vanilla weapon resolves. Turn off after verifying."));
+
+            WarriorTier4ShieldConfig = Config.Bind("General (Server Synced)", "WarriorTier4Shield",
+                "ShieldBlackmetal", new ConfigDescription(
+                    "Vanilla shield prefab replacing the wooden buckler in WarriorTier4's random shield pool (keeps the 50/50 shield-or-nothing roll). Blank to keep the bundle's wooden shield.", null,
                     new ConfigurationManagerAttributes { IsAdminOnly = true }));
 
             NeedlesRequiredConfig = Config.Bind("General (Server Synced)", "NeedlesRequired",
@@ -640,6 +697,569 @@ namespace ChebsNecromancy
         }
         
 
+        // Read-only diagnostic (Claude's rule: never guess a field name twice).
+        // Dumps every *weapon* field found by reflection on Humanoid/MonsterAI
+        // for each factory Warrior prefab, BEFORE the vanilla swap below runs,
+        // so the log shows the real structure without touching anything.
+        private static void DumpWarriorWeaponFields()
+        {
+            if (!WarriorTier4WeaponDiag.Value) return;
+
+            var prefabNames = new[]
+            {
+                "ChebGonaz_SkeletonWarrior",
+                "ChebGonaz_SkeletonWarriorTier2",
+                "ChebGonaz_SkeletonWarriorTier3",
+                "ChebGonaz_SkeletonWarriorTier4",
+            };
+            var flags = System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.NonPublic;
+
+            foreach (var prefabName in prefabNames)
+            {
+                var prefab = PrefabManager.Instance.GetPrefab(prefabName);
+                if (prefab == null)
+                {
+                    Jotunn.Logger.LogWarning($"[WeaponDiag] {prefabName}: prefab not found.");
+                    continue;
+                }
+                var humanoid = prefab.GetComponent<Humanoid>();
+                if (humanoid == null)
+                {
+                    Jotunn.Logger.LogWarning($"[WeaponDiag] {prefabName}: no Humanoid component.");
+                    continue;
+                }
+                Jotunn.Logger.LogInfo($"[WeaponDiag] {prefabName}: m_randomWeapon=[{WeaponNames(humanoid.m_randomWeapon)}] " +
+                    $"m_defaultItems=[{WeaponNames(humanoid.m_defaultItems)}] " +
+                    $"m_unarmedWeapon=[{(humanoid.m_unarmedWeapon != null ? humanoid.m_unarmedWeapon.name : "null")}] " +
+                    $"m_randomSets={humanoid.m_randomSets?.Length.ToString() ?? "null"}");
+                foreach (var field in typeof(Humanoid).GetFields(flags))
+                {
+                    if (field.Name.IndexOf("eapon", System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    if (field.Name is "m_randomWeapon" or "m_unarmedWeapon") continue; // already logged above
+                    object value;
+                    try { value = field.GetValue(humanoid); }
+                    catch { value = "<unreadable>"; }
+                    Jotunn.Logger.LogInfo($"[WeaponDiag] {prefabName}: Humanoid.{field.Name} ({field.FieldType.Name}) = {WeaponValue(value)}");
+                }
+                var monsterAI = prefab.GetComponent<MonsterAI>();
+                if (monsterAI == null)
+                {
+                    Jotunn.Logger.LogInfo($"[WeaponDiag] {prefabName}: no MonsterAI component.");
+                    continue;
+                }
+                var aiWeaponFields = typeof(MonsterAI).GetFields(flags)
+                    .Where(f => f.Name.IndexOf("eapon", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    .Select(f => f.Name)
+                    .ToList();
+                Jotunn.Logger.LogInfo($"[WeaponDiag] {prefabName}: MonsterAI weapon-related fields: " +
+                    (aiWeaponFields.Count == 0 ? "none" : string.Join(",", aiWeaponFields)));
+            }
+
+            var wanted = (WarriorTier4WeaponsConfig.Value ?? "")
+                .Split(',')
+                .Select(s => s.Trim())
+                .Where(s => s.Length > 0)
+                .ToList();
+            foreach (var name in wanted)
+            {
+                var resolved = PrefabManager.Instance.GetPrefab(name);
+                Jotunn.Logger.LogInfo($"[WeaponDiag] wanted '{name}': " +
+                    (resolved != null ? $"resolves to {resolved.name}" : "NOT FOUND (will be skipped by swap)"));
+            }
+        }
+
+        private static string WeaponNames(GameObject[] arr)
+        {
+            if (arr == null) return "null";
+            return string.Join(",", arr.Select(g => g != null ? g.name : "null"));
+        }
+
+        private static string WeaponValue(object value)
+        {
+            if (value == null) return "null";
+            if (value is GameObject go) return go.name;
+            if (value is System.Collections.IEnumerable seq)
+            {
+                var names = new List<string>();
+                foreach (var item in seq) names.Add(item is GameObject g ? g.name : item?.ToString() ?? "null");
+                return "[" + string.Join(",", names) + "]";
+            }
+            return value.ToString();
+        }
+
+        // Load-time snapshot of vanilla attack animations, for the no-leak proof
+        // (re-read after minions patch their own instances).
+        internal static readonly Dictionary<string, string> VanillaWeaponAnimBaseline = new();
+
+        private static readonly Dictionary<string, GameObject> _carapaceArmorCache = new();
+
+        // Chest/legs transplant for carapace wearers (visual-only, like the
+        // helmet): vanilla carapace mesh+materials on the proven blackiron
+        // hierarchy, bones remapped by name to the skeleton rig. Vanilla
+        // carapace armor NREs VisEquipment attach on skeletons (naked,
+        // spawn-aborting minions), so it is NEVER equipped directly: miss
+        // here falls back to custom blackiron, never vanilla.
+        internal static GameObject GetCarapaceArmorPiece(string kind) // "chest" | "legs"
+        {
+            if (_carapaceArmorCache.TryGetValue(kind, out var cached) && cached != null)
+            {
+                EnsureTransplantRegistered(cached); // ObjectDB is per-world
+                return cached;
+            }
+            var built = BuildCarapaceArmorTransplant(kind);
+            if (built != null)
+            {
+                _carapaceArmorCache[kind] = built;
+                EnsureTransplantRegistered(built);
+                return built;
+            }
+            var fallbackName = kind == "legs" ? "ChebGonaz_ArmorBlackIronLegs" : "ChebGonaz_ArmorBlackIronChest";
+            var fallback = PrefabManager.Instance.GetPrefab(fallbackName);
+            if (fallback == null) Jotunn.Logger.LogError($"CarapaceArmor: fallback {fallbackName} missing too.");
+            return fallback;
+        }
+
+        private static GameObject BuildCarapaceArmorTransplant(string kind)
+        {
+            try
+            {
+                var ironName = kind == "legs" ? "ChebGonaz_ArmorBlackIronLegs" : "ChebGonaz_ArmorBlackIronChest";
+                var vanillaName = kind == "legs" ? "ArmorCarapaceLegs" : "ArmorCarapaceChest";
+                var cloneName = kind == "legs" ? "ChebGonaz_ArmorCarapaceLegs" : "ChebGonaz_ArmorCarapaceChest";
+                var iron = PrefabManager.Instance.GetPrefab(ironName);
+                var vanilla = PrefabManager.Instance.GetPrefab(vanillaName);
+                var skeleton = PrefabManager.Instance.GetPrefab("ChebGonaz_SkeletonWarriorTier4");
+                if (iron == null || vanilla == null || skeleton == null)
+                {
+                    Jotunn.Logger.LogWarning($"CarapaceArmor: iron={iron != null} vanilla={vanilla != null} skeleton={skeleton != null}, skipping.");
+                    return null;
+                }
+                var boneMap = new Dictionary<string, Transform>(System.StringComparer.OrdinalIgnoreCase);
+                foreach (var t in skeleton.GetComponentsInChildren<Transform>(true))
+                    if (!boneMap.ContainsKey(t.name)) boneMap[t.name] = t;
+                SkinnedMeshRenderer vanillaSkinned = null;
+                foreach (var r in vanilla.GetComponentsInChildren<SkinnedMeshRenderer>(true)) { vanillaSkinned = r; break; }
+                SkinnedMeshRenderer ironSkinned = null;
+                foreach (var r in iron.GetComponentsInChildren<SkinnedMeshRenderer>(true)) { ironSkinned = r; break; }
+                if (vanillaSkinned?.sharedMesh == null || ironSkinned == null)
+                {
+                    Jotunn.Logger.LogWarning("CarapaceArmor: renderer anatomy mismatch, skipping.");
+                    return null;
+                }
+                var mesh = vanillaSkinned.sharedMesh;
+                var used = new HashSet<int>();
+                foreach (var bw in mesh.boneWeights)
+                {
+                    if (bw.weight0 > 0f) used.Add(bw.boneIndex0);
+                    if (bw.weight1 > 0f) used.Add(bw.boneIndex1);
+                    if (bw.weight2 > 0f) used.Add(bw.boneIndex2);
+                    if (bw.weight3 > 0f) used.Add(bw.boneIndex3);
+                }
+                var vanillaBones = vanillaSkinned.bones;
+                if (vanillaBones == null || vanillaBones.Length == 0)
+                {
+                    Jotunn.Logger.LogWarning("CarapaceArmor: vanilla has no bones array, skipping.");
+                    return null;
+                }
+                var remapped = new Transform[vanillaBones.Length];
+                var missing = new List<string>();
+                for (int i = 0; i < vanillaBones.Length; i++)
+                {
+                    var vb = vanillaBones[i];
+                    if (vb == null) continue;
+                    if (boneMap.TryGetValue(vb.name, out var mapped)) remapped[i] = mapped;
+                    else if (used.Contains(i)) missing.Add(vb.name);
+                    else remapped[i] = vb;
+                }
+                if (missing.Count > 0)
+                {
+                    Jotunn.Logger.LogWarning($"CarapaceArmor: unmapped bones [{string.Join(",", missing)}], skipping.");
+                    return null;
+                }
+                var vRoot = vanillaSkinned.rootBone;
+                if (vRoot == null || !boneMap.TryGetValue(vRoot.name, out var sRoot))
+                {
+                    Jotunn.Logger.LogWarning("CarapaceArmor: root bone unmapped, skipping.");
+                    return null;
+                }
+                // Fresh GameObject (never Instantiate): instantiating the iron
+                // prefab registers a ZNetView phantom with the live world and
+                // its later destroy poisons ZNetScene.RemoveObjects every
+                // frame. Structure (names + offsets) is copied from the proven
+                // iron piece, skin from vanilla, ItemDrop grafted from iron
+                // (keeps armor stats + equip slot). Same pattern as the helmet.
+                var chain = new List<Transform>();
+                for (var t = ironSkinned.transform; t != null && t != iron.transform; t = t.parent)
+                    chain.Add(t);
+                chain.Reverse();
+                if (_carapaceHelmetHolder == null)
+                {
+                    _carapaceHelmetHolder = new GameObject("ChebGonaz_HelmetTemplateHolder");
+                    UnityEngine.Object.DontDestroyOnLoad(_carapaceHelmetHolder);
+                }
+                var clone = new GameObject(cloneName);
+                clone.transform.SetParent(_carapaceHelmetHolder.transform, false);
+                Transform visualParent = clone.transform;
+                if (chain.Count > 0)
+                {
+                    foreach (var link in chain)
+                    {
+                        var node = new GameObject(link.name);
+                        node.transform.SetParent(visualParent, false);
+                        node.transform.localPosition = link.localPosition;
+                        node.transform.localRotation = link.localRotation;
+                        node.transform.localScale = link.localScale;
+                        visualParent = node.transform;
+                    }
+                }
+                var cloneSkinned = visualParent.gameObject.AddComponent<SkinnedMeshRenderer>();
+                cloneSkinned.sharedMesh = mesh;
+                cloneSkinned.sharedMaterials = vanillaSkinned.sharedMaterials;
+                cloneSkinned.bones = remapped;
+                cloneSkinned.rootBone = sRoot;
+                cloneSkinned.updateWhenOffscreen = true;
+                GraftHelmetItemDrop(clone, ironName);
+                // ObjectDB-registered so instances resolve m_dropPrefab
+                // (unregistered names NRE every SetupVisEquipment). Relog
+                // covered via the carapace flag (name restore + re-equip).
+                RegisterTransplantInObjectDB(clone);
+                Jotunn.Logger.LogInfo($"CarapaceArmor: {cloneName} built (mesh={mesh.name}, bones={remapped.Length}, root={sRoot.name}).");
+                return clone;
+            }
+            catch (System.Exception ex)
+            {
+                Jotunn.Logger.LogWarning($"CarapaceArmor {kind} failed ({ex.Message}), falling back.");
+                return null;
+            }
+        }
+
+        // Builds ChebGonaz_HelmetCarapaceSkeleton (the config default) without
+        // Unity: the proven skeleton-rigged iron helmet hierarchy, with ONLY
+        // its rigid mesh + materials swapped to vanilla Carapace. Anatomy
+        // (verified in-bundle): iron = MeshFilter+MeshRenderer under
+        // attach/bronzehelmet (rigid, placement proven); vanilla = skinned
+        // mesh under attach_skin/CarapaceHelmet. Rigid swap keeps the proven
+        // placement; the existing scale/lift tuning still applies (child keeps
+        // its name). Stats stay iron (visual-only transplant). Any failure ->
+        // null and the iron fallback path carries on like today.
+        //
+        // LAZY on purpose: built on first carapace spawn IN-GAME, never at
+        // load. Instantiating ZNetView-bearing prefabs in the menu scene
+        // poisoned the clone (NREs on every later equip). Unregistered on
+        // purpose too (registry timing vs live ZNetScene): the template is
+        // cached statically + DontDestroyOnLoad, handed by reference to
+        // ScaleEquipment, and re-equipped from cache on every relog via the
+        // carapace ZDO flag (see WaitForZNet).
+        private static GameObject _carapaceHelmetClone;
+        private static GameObject _carapaceHelmetHolder;
+
+        // Mesh-space center of the vanilla helmet geometry (read-only bounds).
+        // Rigid rendering places mesh-space verts at nodePos + verts, so the
+        // node must sit at lift - center*scale to land the geometry center on
+        // the attach point (+lift). Without this the helmet renders up in the
+        // sky (body-space geometry) and reads as "missing".
+        internal static Vector3 s_helmetMeshCenter = Vector3.zero;
+        internal static bool s_helmetMeshCenterValid = false;
+
+        // Fitted base position of the Unity-built helmet node (set at build).
+        internal static Vector3 s_helmetBasePos = Vector3.zero;
+        internal static bool s_helmetBasePosValid = false;
+
+        internal static GameObject BuildCarapaceHelmetClone()
+        {
+            if (_carapaceHelmetClone != null) return _carapaceHelmetClone; // cached (dead refs read null in Unity)
+            const string cloneName = "ChebGonaz_HelmetCarapaceSkeleton";
+            try
+            {
+                // Mesh from the loose OBJ next to the DLL (version-proof: no
+                // AssetBundle, no readability flags involved - we own the mesh).
+                // Materials by reference from the vanilla helmet (read-only use).
+                var modDir = Path.GetDirectoryName(typeof(BasePlugin).Assembly.Location);
+                var objPath = modDir != null ? Path.Combine(modDir, "CarapaceHelmet.obj") : null;
+                var vanilla = PrefabManager.Instance.GetPrefab("HelmetCarapace");
+                SkinnedMeshRenderer vanillaSkinned = null;
+                if (vanilla != null)
+                {
+                    var vgo = vanilla.transform.Find("attach_skin/CarapaceHelmet")?.gameObject
+                        ?? System.Array.Find(vanilla.GetComponentsInChildren<Transform>(true),
+                            t => t.name.IndexOf("CarapaceHelmet", System.StringComparison.OrdinalIgnoreCase) >= 0)?.gameObject;
+                    vanillaSkinned = vgo?.GetComponent<SkinnedMeshRenderer>();
+                }
+                if (string.IsNullOrEmpty(objPath) || !File.Exists(objPath) || vanillaSkinned == null)
+                {
+                    Jotunn.Logger.LogWarning($"BuildCarapaceHelmet: objPresent={objPath != null && File.Exists(objPath ?? "")} vanilla={vanillaSkinned != null}, skipping (iron fallback stays).");
+                    return null;
+                }
+                var mesh = ParseObjMesh(objPath, 1000f);
+                if (mesh == null) return null;
+                // Fresh GameObject (never Instantiate the iron prefab): iron
+                // brings its ZNetView + bronzehelmet visuals (wrong adjust
+                // target, double builds, network poisoning). Bare
+                // AddComponent<ItemDrop> NREs once in Awake (empty m_shared)
+                // — single harmless log per session, helmet itself works.
+                if (_carapaceHelmetHolder == null)
+                {
+                    _carapaceHelmetHolder = new GameObject("ChebGonaz_HelmetTemplateHolder");
+                    UnityEngine.Object.DontDestroyOnLoad(_carapaceHelmetHolder);
+                }
+                var clone = new GameObject(cloneName);
+                clone.transform.SetParent(_carapaceHelmetHolder.transform, false);
+                var attach = new GameObject("attach");
+                attach.transform.SetParent(clone.transform, false);
+                var meshGO = new GameObject("carapacehelmet");
+                meshGO.transform.SetParent(attach.transform, false);
+                // Fitted numbers measured from the user-assembled Unity prefab
+                // (same mesh, same placement): node scale + position.
+                meshGO.transform.localPosition = new Vector3(0f, 0.232f, -0.007f);
+                meshGO.transform.localScale = Vector3.one * 0.11f;
+                s_helmetBasePos = meshGO.transform.localPosition;
+                s_helmetBasePosValid = true;
+                meshGO.AddComponent<MeshFilter>().sharedMesh = mesh;
+                meshGO.AddComponent<MeshRenderer>().sharedMaterials = vanillaSkinned.sharedMaterials;
+                GraftHelmetItemDrop(clone);
+                RegisterTransplantInObjectDB(clone);
+                _carapaceHelmetClone = clone;
+                Jotunn.Logger.LogInfo($"BuildCarapaceHelmet: {cloneName} built from OBJ (verts={mesh.vertexCount}, bounds={mesh.bounds}).");
+                return clone;
+            }
+            catch (System.Exception ex)
+            {
+                Jotunn.Logger.LogWarning($"BuildCarapaceHelmet failed ({ex.Message}), iron fallback stays.");
+                return null;
+            }
+        }
+
+        // Minimal OBJ reader (v/vt/vn/f, fan-triangulated). Enough for the
+        // 422-vert helmet; returns null on any malformed input.
+        private static Mesh ParseObjMesh(string path, float unitScale)
+        {
+            try
+            {
+                var positions = new List<Vector3>();
+                var normals = new List<Vector3>();
+                var uvs = new List<Vector2>();
+                var vertMap = new Dictionary<(int, int, int), int>();
+                var outVerts = new List<Vector3>();
+                var outNorms = new List<Vector3>();
+                var outUvs = new List<Vector2>();
+                var tris = new List<int>();
+                int Resolve(int idx, int count) => idx < 0 ? count + idx : idx - 1;
+                foreach (var rawLine in File.ReadLines(path))
+                {
+                    var line = rawLine.Trim();
+                    if (line.StartsWith("v ")) { var p = line.Split((char[])null, System.StringSplitOptions.RemoveEmptyEntries); positions.Add(new Vector3(float.Parse(p[1], System.Globalization.CultureInfo.InvariantCulture) * unitScale, float.Parse(p[2], System.Globalization.CultureInfo.InvariantCulture) * unitScale, float.Parse(p[3], System.Globalization.CultureInfo.InvariantCulture) * unitScale)); }
+                    else if (line.StartsWith("vn ")) { var p = line.Split((char[])null, System.StringSplitOptions.RemoveEmptyEntries); normals.Add(new Vector3(float.Parse(p[1], System.Globalization.CultureInfo.InvariantCulture), float.Parse(p[2], System.Globalization.CultureInfo.InvariantCulture), float.Parse(p[3], System.Globalization.CultureInfo.InvariantCulture))); }
+                    else if (line.StartsWith("vt ")) { var p = line.Split((char[])null, System.StringSplitOptions.RemoveEmptyEntries); uvs.Add(new Vector2(float.Parse(p[1], System.Globalization.CultureInfo.InvariantCulture), float.Parse(p[2], System.Globalization.CultureInfo.InvariantCulture))); }
+                    else if (line.StartsWith("f "))
+                    {
+                        var corners = new List<int>();
+                        foreach (var tok in line.Substring(2).Split((char[])null, System.StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            var parts = (tok + "//").Split('/');
+                            int vi = Resolve(int.Parse(parts[0]), positions.Count);
+                            int vti = parts.Length > 1 && parts[1].Length > 0 ? Resolve(int.Parse(parts[1]), uvs.Count) : -1;
+                            int vni = parts.Length > 2 && parts[2].Length > 0 ? Resolve(int.Parse(parts[2]), normals.Count) : -1;
+                            var key = (vi, vti, vni);
+                            if (!vertMap.TryGetValue(key, out var idx))
+                            {
+                                idx = outVerts.Count;
+                                vertMap[key] = idx;
+                                outVerts.Add(positions[vi]);
+                                outUvs.Add(vti >= 0 ? uvs[vti] : Vector2.zero);
+                                outNorms.Add(vni >= 0 ? normals[vni] : Vector3.up);
+                            }
+                            corners.Add(idx);
+                        }
+                        for (int i = 1; i + 1 < corners.Count; i++) { tris.Add(corners[0]); tris.Add(corners[i]); tris.Add(corners[i + 1]); }
+                    }
+                }
+                if (outVerts.Count == 0 || tris.Count == 0) return null;
+                var mesh = new Mesh { name = "CarapaceHelmetRT" };
+                mesh.SetVertices(outVerts);
+                mesh.SetNormals(outNorms);
+                mesh.SetUVs(0, outUvs);
+                mesh.SetTriangles(tris, 0);
+                mesh.RecalculateBounds();
+                return mesh;
+            }
+            catch (System.Exception ex)
+            {
+                Jotunn.Logger.LogWarning($"ParseObjMesh failed ({ex.GetType().Name}: {ex.Message}).");
+                return null;
+            }
+        }
+        // Runtime registration for transplant templates (mirrors what Jotunn
+        // does for queued customs at init, but lazily in-game): backfill
+        // m_dropPrefab + ObjectDB inject (so instances resolve it) + full
+        // PrefabManager/ZNetScene registration (so the VISUAL attach, which
+        // resolves by registry and NOT by reference, finds the mesh —
+        // without this the helmet equips cleanly yet renders invisible).
+        // Templates live under a DontDestroyOnLoad holder, so refs stay
+        // valid across world loads; per-serve verification re-injects.
+        private static void RegisterTransplantInObjectDB(GameObject template)
+        {
+            try
+            {
+                var itemDrop = template.GetComponent<ItemDrop>();
+                if (itemDrop == null)
+                {
+                    Jotunn.Logger.LogWarning($"RegisterTransplant: {template.name} has no ItemDrop, skipping.");
+                    return;
+                }
+                if (itemDrop.m_itemData != null && itemDrop.m_itemData.m_dropPrefab == null)
+                    itemDrop.m_itemData.m_dropPrefab = template;
+                EnsureTransplantRegistered(template);
+            }
+            catch (System.Exception ex)
+            {
+                Jotunn.Logger.LogWarning($"RegisterTransplant {template?.name} failed ({ex.Message}).");
+            }
+        }
+
+        // Idempotent per-serve verification: ObjectDB is recreated per world,
+        // so entries must be re-injected whenever missing or pointing
+        // elsewhere. Called on every serve path (spawn + relog re-equip).
+        internal static void EnsureTransplantRegistered(GameObject template)
+        {
+            if (template == null) return;
+            var objectDB = ObjectDB.instance;
+            if (objectDB == null) return;
+            try
+            {
+                var hash = template.name.GetStableHashCode();
+                if (!objectDB.m_itemByHash.TryGetValue(hash, out var current)
+                    || !object.ReferenceEquals(current, template))
+                {
+                    objectDB.m_itemByHash[hash] = template;
+                    if (!objectDB.m_items.Contains(template)) objectDB.m_items.Add(template);
+                    if (PrefabManager.Instance.GetPrefab(template.name) == null)
+                        PrefabManager.Instance.AddPrefab(template);
+                    if (ZNetScene.instance != null)
+                    {
+                        try { PrefabManager.Instance.RegisterToZNetScene(template); }
+                        catch (System.Exception ex) { Jotunn.Logger.LogWarning($"RegisterTransplant: ZNetScene register {template.name} ({ex.Message})."); }
+                    }
+                    var itemDrop = template.GetComponent<ItemDrop>();
+                    if (itemDrop?.m_itemData != null && itemDrop.m_itemData.m_dropPrefab == null)
+                        itemDrop.m_itemData.m_dropPrefab = template;
+                    Jotunn.Logger.LogInfo($"RegisterTransplant: {template.name} registered (ObjectDB + PrefabManager + ZNetScene).");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Jotunn.Logger.LogWarning($"RegisterTransplant {template.name} failed ({ex.Message}).");
+            }
+        }
+
+        private const System.Reflection.BindingFlags CloneFlags =
+            System.Reflection.BindingFlags.Instance
+            | System.Reflection.BindingFlags.Public
+            | System.Reflection.BindingFlags.NonPublic;
+
+        private static object ShallowClone(object orig)
+        {
+            var clone = System.Runtime.Serialization.FormatterServices.GetUninitializedObject(orig.GetType());
+            foreach (var field in orig.GetType().GetFields(CloneFlags))
+                field.SetValue(clone, field.GetValue(orig));
+            return clone;
+        }
+
+        private static bool SetField(object target, string fieldName, object value)
+        {
+            if (target == null) return false;
+            var field = target.GetType().GetField(fieldName, CloneFlags);
+            if (field == null) return false;
+            field.SetValue(target, value);
+            return true;
+        }
+
+        // Grafts a working ItemDrop onto runtime-built prefabs (fresh
+        // GameObjects have none; Unity-authored ones lost it at build, having
+        // no game assemblies in Editor). Copies the named iron donor's data
+        // (armor stats + equip slot ride along, so armor grafts from its own
+        // iron piece, never from the helmet); dropPrefab resolves by name at
+        // equip (Ensure covers registration). Idempotent.
+        internal static void GraftHelmetItemDrop(GameObject helmetPrefab, string ironSourceName = "ChebGonaz_HelmetBlackIronSkeleton")
+        {
+            if (helmetPrefab.GetComponent<ItemDrop>() != null) return;
+            var iron = PrefabManager.Instance.GetPrefab(ironSourceName);
+            var ironData = iron?.GetComponent<ItemDrop>()?.m_itemData;
+            if (ironData == null)
+            {
+                Jotunn.Logger.LogWarning("GraftHelmetItemDrop: iron reference unavailable.");
+                return;
+            }
+            var graft = helmetPrefab.AddComponent<ItemDrop>();
+            var fresh = ShallowClone(ironData);
+            SetField(fresh, "m_dropPrefab", null);
+            typeof(ItemDrop).GetField("m_itemData", CloneFlags)?.SetValue(graft, fresh);
+            Jotunn.Logger.LogInfo($"GraftHelmetItemDrop: ItemDrop grafted onto {helmetPrefab.name} (iron data, dropPrefab by name).");
+        }
+
+        // Optional Unity-authored carapace helmet (separate file): visual-only
+        // prefab (no game assemblies in Editor). Absent file = today's
+        // behavior, info-level only. Convention (see UNITY_HELMET_GUIDE.md):
+        // object "ChebGonaz_HelmetCarapaceSkeleton" at the asset path below.
+        private void LoadUnityHelmetPrefab()
+        {
+            const string file = "chebgonaz-carapace";
+            const string assetSuffix = "chebgonaz_helmetcarapaceskeleton.prefab";
+            try
+            {
+                var full = Path.Combine(Path.GetDirectoryName(Info.Location), file);
+                if (!File.Exists(full))
+                {
+                    Logger.LogInfo("Unity carapace helmet bundle not present (guide: UNITY_HELMET_GUIDE.md).");
+                    return;
+                }
+                var bundle = AssetUtils.LoadAssetBundle(full);
+                if (bundle == null)
+                {
+                    Logger.LogWarning($"Unity carapace helmet bundle rejected (likely built with an incompatible Unity version; use Unity 6000 <= game runtime).");
+                    return;
+                }
+                try
+                {
+                    // Suffix match instead of an exact internal path: immune to
+                    // folder/case differences between Editor and bundle layout.
+                    string match = null;
+                    foreach (var assetName in bundle.GetAllAssetNames())
+                    {
+                        if (assetName != null && assetName.EndsWith(assetSuffix, System.StringComparison.OrdinalIgnoreCase))
+                        {
+                            match = assetName;
+                            break;
+                        }
+                    }
+                    if (match == null)
+                    {
+                        Logger.LogWarning($"Unity carapace helmet (*{assetSuffix}) not found in {file}.");
+                        return;
+                    }
+                    var helmet = bundle.LoadAsset<GameObject>(match);
+                    if (helmet == null)
+                    {
+                        Logger.LogWarning($"Unity carapace helmet found at {match} but failed to load.");
+                        return;
+                    }
+                    GraftHelmetItemDrop(helmet);
+                    PrefabManager.Instance.AddPrefab(helmet);
+                    EnsureTransplantRegistered(helmet);
+                    Logger.LogInfo($"Unity carapace helmet loaded: {helmet.name}.");
+                }
+                finally
+                {
+                    bundle.Unload(false);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Logger.LogWarning($"Unity carapace helmet load failed ({ex.Message}).");
+            }
+        }
+
         private void LoadChebGonazAssetBundle()
         {
             var modDirectory = Path.GetDirectoryName(Info.Location);
@@ -737,6 +1357,9 @@ namespace ChebsNecromancy
 
                 // minion items
                 Base.LoadMinionItems(chebgonazAssetBundle, RadeonFriendly.Value);
+
+                // optional Unity-authored carapace helmet (separate bundle file)
+                LoadUnityHelmetPrefab();
 
                 wands.ForEach(wand =>
                 {
@@ -957,6 +1580,100 @@ namespace ChebsNecromancy
 
                     CreatureManager.Instance.AddCreature(new CustomCreature(prefab, true));
                 });
+
+                // Diagnostic first (factory state, read-only), swap second: the log
+                // always shows what each prefab shipped with before we touch it.
+                DumpWarriorWeaponFields();
+
+                // Carapace helmet for carapace wearers: runtime mesh transplant
+                // (see method). Registers ChebGonaz_HelmetCarapaceSkeleton, the
+                // config default, so no config change is needed. Any failure
+                // keeps today's iron fallback with a warning in the log.
+                // SUSPENDED 2026-10-14: carapace spawns abort with NREs inside
+                // GiveDefaultItem/EquipItem and the clone is the only unproven
+                // object in that loadout (everything else is vanilla- or
+                // bundle-hardened). Neutralized until forensics clear it;
+                // ResolveCarapaceHelmetPrefab falls back to iron meanwhile.
+                // BuildCarapaceHelmetClone();
+
+                // WarriorTier4 (BlackMetal/Caparazon tier): wield the configured
+                // vanilla weapons directly (visible, engine-healthy instances)
+                // plus a per-instance animation rewrite (see
+                // EnsureSkeletonWeaponAnim): vanilla "swing_longsword/axe"
+                // states don't exist on the skeleton rig, so each wielded
+                // instance gets m_attackAnimation -> "attack", chainLevels -> 0
+                // (like every custom weapon). Shared vanilla prefabs are never
+                // mutated. Blank config keeps the bundle customs.
+                try
+                {
+                    var tier4Prefab = PrefabManager.Instance.GetPrefab("ChebGonaz_SkeletonWarriorTier4");
+                    var tier4Humanoid = tier4Prefab?.GetComponent<Humanoid>();
+                    var wantedWeapons = (WarriorTier4WeaponsConfig.Value ?? "")
+                        .Split(',')
+                        .Select(s => s.Trim())
+                        .Where(s => s.Length > 0)
+                        .ToList();
+                    if (tier4Prefab != null && tier4Humanoid != null && wantedWeapons.Count > 0)
+                    {
+                        var resolvedWeapons = wantedWeapons
+                            .Select(n => PrefabManager.Instance.GetPrefab(n))
+                            .Where(p => p != null)
+                            .ToList();
+                        var missingWeapons = wantedWeapons
+                            .Where(n => PrefabManager.Instance.GetPrefab(n) == null)
+                            .ToList();
+                        foreach (var missing in missingWeapons)
+                            Logger.LogWarning($"WarriorTier4Weapons: vanilla prefab '{missing}' not found, skipping.");
+                        // Baseline for the no-leak proof: vanilla anims must still
+                        // read swing_* after minions patch their own instances.
+                        VanillaWeaponAnimBaseline.Clear();
+                        foreach (var resolved in resolvedWeapons)
+                        {
+                            var shared = resolved.GetComponent<ItemDrop>()?.m_itemData?.m_shared;
+                            VanillaWeaponAnimBaseline[resolved.name] = shared?.m_attack?.m_attackAnimation ?? "null";
+                        }
+                        if (resolvedWeapons.Count > 0)
+                        {
+                            tier4Humanoid.m_randomWeapon = resolvedWeapons.ToArray();
+                            Logger.LogInfo($"WarriorTier4 weapons -> vanilla: {string.Join(",", resolvedWeapons.Select(p => p.name))}.");
+                        }
+                        else
+                        {
+                            Logger.LogWarning("WarriorTier4Weapons: no vanilla weapon resolved, keeping bundle custom weapons.");
+                        }
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    Logger.LogWarning($"WarriorTier4Weapons patch failed, keeping bundle weapons ({ex.Message}).");
+                }
+
+                // WarriorTier4 shield: blackmetal buckler instead of the wooden
+                // one, keeping the 50/50 shield-or-nothing roll. Shields need
+                // no animation rewrite. Blank config keeps the wooden shield.
+                try
+                {
+                    var tier4ForShield = PrefabManager.Instance.GetPrefab("ChebGonaz_SkeletonWarriorTier4");
+                    var tier4ShieldHumanoid = tier4ForShield?.GetComponent<Humanoid>();
+                    var wantedShield = (WarriorTier4ShieldConfig.Value ?? "").Trim();
+                    if (tier4ForShield != null && tier4ShieldHumanoid != null && wantedShield.Length > 0)
+                    {
+                        var shieldPrefab = PrefabManager.Instance.GetPrefab(wantedShield);
+                        if (shieldPrefab == null)
+                        {
+                            Logger.LogWarning($"WarriorTier4Shield: vanilla prefab '{wantedShield}' not found, keeping wooden shield.");
+                        }
+                        else
+                        {
+                            tier4ShieldHumanoid.m_randomShield = new[] { shieldPrefab, null };
+                            Logger.LogInfo($"WarriorTier4 shield -> {shieldPrefab.name} (50/50 roll kept).");
+                        }
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    Logger.LogWarning($"WarriorTier4Shield patch failed, keeping wooden shield ({ex.Message}).");
+                }
 
                 #endregion
 

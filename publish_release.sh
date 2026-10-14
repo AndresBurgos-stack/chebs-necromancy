@@ -4,6 +4,7 @@ RELEASEDIR=ChebsNecromancy/bin/Release/net48
 DLL=$RELEASEDIR/ChebsNecromancy.dll
 LIB=$RELEASEDIR/ChebsValheimLibrary.dll
 BUN=chebs-necromancy-unity/Assets/AssetBundles/chebgonaz
+HELM=ChebsNecromancy/Assets/CarapaceHelmet.obj
 PLUGINS=ChebsNecromancy/Package/plugins
 README=README.md
 TRANSLATIONS=Translations
@@ -23,6 +24,11 @@ fi
 
 if [ ! -f "$BUN" ]; then
     echo "Error: $BUN does not exist or is not readable."
+    exit 1
+fi
+
+if [ ! -f "$HELM" ]; then
+    echo "Error: $HELM does not exist or is not readable."
     exit 1
 fi
 
@@ -46,6 +52,7 @@ fi
 cp -f "$DLL" "$PLUGINS" || { echo "Error: Failed to copy $DLL"; exit 1; }
 cp -f "$LIB" "$PLUGINS" || { echo "Error: Failed to copy $LIB"; exit 1; }
 cp -f "$BUN" "$PLUGINS" || { echo "Error: Failed to copy $BUN"; exit 1; }
+cp -f "$HELM" "$PLUGINS" || { echo "Error: Failed to copy $HELM"; exit 1; }
 cp -f "$README" "$PLUGINS/../README.md" || { echo "Error: Failed to copy $README"; exit 1; }
 cp -rf "$TRANSLATIONS" "$PLUGINS/" || { echo "Error: Failed to copy Translations"; exit 1; }
 

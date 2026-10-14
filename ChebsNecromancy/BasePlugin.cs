@@ -99,6 +99,17 @@ namespace ChebsNecromancy
         public static ConfigEntry<int> ArmorBronzeRequiredConfig;
         public static ConfigEntry<int> ArmorIronRequiredConfig;
         public static ConfigEntry<int> ArmorBlackIronRequiredConfig;
+        public static ConfigEntry<int> ArmorCarapaceRequiredConfig;
+        public static ConfigEntry<string> ArmorCarapaceHelmetPrefabConfig;
+
+        // Extra power for the Mistlands/Carapace-armored Skeleton Warrior, on top of
+        // its real higher-armor-rating gear. Weapon damage itself can't be touched
+        // directly (same "baked into the prefab" limitation noted elsewhere), so the
+        // extra level bump is what raises its effective damage output, via Valheim's
+        // own star system.
+        public static ConfigEntry<float> MistlandsHealthMultiplierConfig;
+        public static ConfigEntry<int> MistlandsExtraLevelsConfig;
+        public static ConfigEntry<string> MistlandsBonusResistancesConfig;
         public static ConfigEntry<int> NeedlesRequiredConfig;
 
         public static ConfigEntry<bool> DurabilityDamage;
@@ -474,6 +485,45 @@ namespace ChebsNecromancy
             ArmorBlackIronRequiredConfig = Config.Bind("General (Server Synced)", "ArmorBlackIronRequired",
                 1, new ConfigDescription("The amount of Black Metal required to craft a minion in black iron armor.",
                     null,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            // Mistlands/Carapace is an extra, on-top-of-Black-Metal upgrade for the
+            // Skeleton Warrior - see SkeletonWand's Warrior branch. Not tied to
+            // ChebGonazMinion.ArmorType (an external enum we can't extend), so it's
+            // its own standalone resource check, consumed in addition to Black Metal.
+            ArmorCarapaceRequiredConfig = Config.Bind("General (Server Synced)", "ArmorCarapaceRequired",
+                5, new ConfigDescription(
+                    "The amount of Carapace required, on top of Black Metal, to craft a Skeleton Warrior in Mistlands/Carapace armor instead of Black Iron armor.", null,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            // HelmetCarapace didn't look right on the skeleton rig. Defaults to the
+            // plain vanilla Iron helmet (already proven to fit fine), while chest/
+            // legs stay Carapace. Change this to any other helmet prefab name if
+            // you want to try something else without needing a code change.
+            ArmorCarapaceHelmetPrefabConfig = Config.Bind("General (Server Synced)", "ArmorCarapaceHelmetPrefab",
+                "HelmetCarapace", new ConfigDescription(
+                    "The helmet prefab used with Carapace/Mistlands armor on the Skeleton Warrior (chest/legs always stay Carapace). Must be a prefab that fits the skeleton rig - HelmetCarapace renders small on it, HelmetIron is the proven alternative.", null,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            MistlandsHealthMultiplierConfig = Config.Bind("General (Server Synced)", "MistlandsHealthMultiplier",
+                1.3f, new ConfigDescription(
+                    "Health multiplier applied on top of the normal Skeleton Warrior health formula for the Mistlands/Carapace-armored variant (Black Metal + enough Carapace). 1.0 = no bonus.", null,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            // Defaults to 0 (off): SkeletonTierThreeQuality is already 3 by default,
+            // Valheim's own star-icon display cap - going to 4 wouldn't show MORE
+            // stars, it would show NONE, making the Mistlands variant look weaker
+            // at a glance even though it mechanically isn't. Left available for
+            // servers that have lowered SkeletonTierThreeQuality below 3 and have
+            // room to use this safely, but off by default to avoid that visual bug.
+            MistlandsExtraLevelsConfig = Config.Bind("General (Server Synced)", "MistlandsExtraLevels",
+                0, new ConfigDescription(
+                    "Extra star levels added on top of SkeletonTierThreeQuality for the Mistlands/Carapace-armored Warrior. CAUTION: Valheim's star icon only displays up to 3 - if SkeletonTierThreeQuality is already 3 (the default), going higher shows NO stars at all instead of more, which looks like a downgrade. Only raise this if you've also lowered SkeletonTierThreeQuality to leave room. 0 = no bonus (default, recommended).", null,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            MistlandsBonusResistancesConfig = Config.Bind("General (Server Synced)", "MistlandsBonusResistances",
+                "Pierce:Resistant", new ConfigDescription(
+                    "Comma-delimited DamageType:DamageModifier pairs applied only to the Mistlands/Carapace-armored Skeleton Warrior, eg. 'Pierce:Resistant,Frost:VeryResistant'. Valid DamageType: Blunt, Slash, Pierce, Chop, Pickaxe, Fire, Frost, Lightning, Poison, Spirit. Valid DamageModifier: Normal, Resistant, VeryResistant, Weak, VeryWeak, Immune, Ignore. Leave blank for none.", null,
                     new ConfigurationManagerAttributes { IsAdminOnly = true }));
 
             NeedlesRequiredConfig = Config.Bind("General (Server Synced)", "NeedlesRequired",

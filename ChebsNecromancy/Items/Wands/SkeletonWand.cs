@@ -241,11 +241,23 @@ namespace ChebsNecromancy.Items.Wands
                             BasePlugin.ArmorBronzeRequiredConfig.Value,
                             BasePlugin.ArmorLeatherScrapsRequiredConfig.Value)
                         : ChebGonazMinion.ArmorType.None;
-                    
+
+                    // Warrior-only extra upgrade on top of Black Metal: carrying
+                    // enough Carapace swaps the Tier4 Warrior's armor from the
+                    // custom Black Iron set to real Mistlands Carapace armor
+                    // (better armor rating), same weapon pool either way since
+                    // weapons are baked into the WarriorTier4 prefab, not equipped
+                    // dynamically - see the comment in SkeletonMinion.ScaleEquipment.
+                    var isMistlandsArmor = armorType == ChebGonazMinion.ArmorType.BlackMetal
+                        && ExtraResourceConsumptionUnlocked
+                        && Player.m_localPlayer.GetInventory().CountItems("$item_carapace")
+                            >= BasePlugin.ArmorCarapaceRequiredConfig.Value;
+
                     switch (SelectedMinionOption)
                     {
                         case MinionOption.Warrior:
-                            SpawnSkeleton(playerNecromancyLevel, SpawnSkeletonWarriorMinion(armorType), armorType);
+                            SpawnSkeleton(playerNecromancyLevel, SpawnSkeletonWarriorMinion(armorType), armorType,
+                                isMistlandsArmor);
                             break;
                         case MinionOption.Archer:
                             SpawnSkeleton(playerNecromancyLevel, SpawnSkeletonArcher(), armorType);
@@ -439,7 +451,8 @@ namespace ChebsNecromancy.Items.Wands
         }
 
         private void SpawnSkeleton(float playerNecromancyLevel,
-            SkeletonMinion.SkeletonType skeletonType, ChebGonazMinion.ArmorType armorType)
+            SkeletonMinion.SkeletonType skeletonType, ChebGonazMinion.ArmorType armorType,
+            bool isMistlandsArmor = false)
         {
             if (skeletonType == SkeletonMinion.SkeletonType.None) return;
             if (!SkeletonsAllowed.Value) return;
@@ -466,9 +479,10 @@ namespace ChebsNecromancy.Items.Wands
                 quality = SkeletonTierTwoQuality.Value;
             }
 
-            SkeletonMinion.ConsumeResources(skeletonType, armorType);
+            SkeletonMinion.ConsumeResources(skeletonType, armorType, isMistlandsArmor);
 
-            SkeletonMinion.InstantiateSkeleton(quality, playerNecromancyLevel, skeletonType, armorType);
+            SkeletonMinion.InstantiateSkeleton(quality, playerNecromancyLevel, skeletonType, armorType,
+                isMistlandsArmor);
         }
     }
 }

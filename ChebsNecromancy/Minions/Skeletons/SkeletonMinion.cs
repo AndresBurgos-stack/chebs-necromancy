@@ -351,6 +351,43 @@ namespace ChebsNecromancy.Minions.Skeletons
             }
         }
 
+        // Same pattern as CharredMinion.ApplyBonusResistances, just scoped to the
+        // Mistlands/Carapace-armored Skeleton Warrior via its own separate config.
+        private void ApplyMistlandsResistances()
+        {
+            var character = GetComponent<Character>();
+            if (character == null || string.IsNullOrWhiteSpace(BasePlugin.MistlandsBonusResistancesConfig.Value)) return;
+
+            foreach (var entry in BasePlugin.MistlandsBonusResistancesConfig.Value.Split(','))
+            {
+                var parts = entry.Split(':');
+                if (parts.Length != 2) continue;
+                try
+                {
+                    var type = (HitData.DamageType)System.Enum.Parse(typeof(HitData.DamageType), parts[0].Trim(), true);
+                    var modifier = (HitData.DamageModifier)System.Enum.Parse(typeof(HitData.DamageModifier), parts[1].Trim(), true);
+                    var mods = character.m_damageModifiers;
+                    switch (type)
+                    {
+                        case HitData.DamageType.Blunt: mods.m_blunt = modifier; break;
+                        case HitData.DamageType.Slash: mods.m_slash = modifier; break;
+                        case HitData.DamageType.Pierce: mods.m_pierce = modifier; break;
+                        case HitData.DamageType.Chop: mods.m_chop = modifier; break;
+                        case HitData.DamageType.Pickaxe: mods.m_pickaxe = modifier; break;
+                        case HitData.DamageType.Fire: mods.m_fire = modifier; break;
+                        case HitData.DamageType.Frost: mods.m_frost = modifier; break;
+                        case HitData.DamageType.Lightning: mods.m_lightning = modifier; break;
+                        case HitData.DamageType.Poison: mods.m_poison = modifier; break;
+                        case HitData.DamageType.Spirit: mods.m_spirit = modifier; break;
+                    }
+                }
+                catch (System.Exception)
+                {
+                    Logger.LogWarning($"SkeletonMinion: ignoring malformed Mistlands resistance entry '{entry.Trim()}'.");
+                }
+            }
+        }
+
         public virtual void ScaleStats(float necromancyLevel)
         {
             var character = GetComponent<Character>();
@@ -365,7 +402,11 @@ namespace ChebsNecromancy.Minions.Skeletons
             character.SetHealth(health);
         }
 
-        public virtual void ScaleEquipment(float necromancyLevel, SkeletonType skeletonType, ArmorType armorType)
+        // isMistlandsArmor defaults to false so every existing caller (DraugrMinion
+        // doesn't call this one, but OrbOfBeckoning does) keeps working unchanged.
+        // Only SkeletonWand's Warrior branch ever passes true.
+        public virtual void ScaleEquipment(float necromancyLevel, SkeletonType skeletonType, ArmorType armorType,
+            bool isMistlandsArmor = false)
         {
             var defaultItems = new List<GameObject>();
 
@@ -488,12 +529,28 @@ namespace ChebsNecromancy.Minions.Skeletons
                     Emblem = InternalName.GetName(emblem);
                     break;
                 case ArmorType.BlackMetal:
-                    defaultItems.AddRange(new[] {
-                        helmetPrefab,
-                        ZNetScene.instance.GetPrefab("ChebGonaz_ArmorBlackIronChest"),
-                        ZNetScene.instance.GetPrefab("ChebGonaz_ArmorBlackIronLegs"),
-                        ZNetScene.instance.GetPrefab("CapeLox"),
-                    });
+                    // Scoped strictly to WarriorTier4 so Poison/Mage/Priest Tier3
+                    // (which also map to ArmorType.BlackMetal elsewhere) are never
+                    // affected by this, even if isMistlandsArmor were somehow true
+                    // for them.
+                    if (isMistlandsArmor && skeletonType == SkeletonType.WarriorTier4)
+                    {
+                        defaultItems.AddRange(new[] {
+                            ZNetScene.instance.GetPrefab(BasePlugin.ArmorCarapaceHelmetPrefabConfig.Value),
+                            ZNetScene.instance.GetPrefab("ArmorCarapaceChest"),
+                            ZNetScene.instance.GetPrefab("ArmorCarapaceLegs"),
+                            ZNetScene.instance.GetPrefab("CapeLox"),
+                        });
+                    }
+                    else
+                    {
+                        defaultItems.AddRange(new[] {
+                            helmetPrefab,
+                            ZNetScene.instance.GetPrefab("ChebGonaz_ArmorBlackIronChest"),
+                            ZNetScene.instance.GetPrefab("ChebGonaz_ArmorBlackIronLegs"),
+                            ZNetScene.instance.GetPrefab("CapeLox"),
+                        });
+                    }
                     if (BasePlugin.DurabilityDamage.Value) { wand.m_durability -= BasePlugin.DurabilityDamageBlackIron.Value; }
                     Emblem = InternalName.GetName(emblem);
                     break;
@@ -502,7 +559,7 @@ namespace ChebsNecromancy.Minions.Skeletons
             humanoid.m_defaultItems = humanoid.m_defaultItems.Union(defaultItems).ToArray();
             
             humanoid.GiveDefaultItems();
-            
+             
             if (BasePlugin.DurabilityDamage.Value)
             {
                 switch (skeletonType)
@@ -528,9 +585,9 @@ namespace ChebsNecromancy.Minions.Skeletons
                 }
             }
         }
-        
+
         public static void InstantiateSkeleton(int quality, float playerNecromancyLevel,
-            SkeletonType skeletonType, ArmorType armorType)
+            SkeletonType skeletonType, ArmorType armorType, bool isMistlandsArmor = false)
         {
             if (skeletonType is SkeletonType.None) return;
             
@@ -548,7 +605,11 @@ namespace ChebsNecromancy.Minions.Skeletons
             var spawnedChar = Instantiate(prefab,
                 transform.position + transform.forward * 2f + Vector3.up, Quaternion.identity);
             var character = spawnedChar.GetComponent<Character>();
-            character.SetLevel(quality);
+            // Extra star levels raise effective damage output for the Mistlands/
+            // Carapace-armored Warrior (its weapon itself can't be swapped - same
+            // "baked into the prefab" limitation discussed for the Charred).
+            var isMistlandsWarrior = isMistlandsArmor && skeletonType == SkeletonType.WarriorTier4;
+            character.SetLevel(isMistlandsWarrior ? quality + BasePlugin.MistlandsExtraLevelsConfig.Value : quality);
 
             spawnedChar.AddComponent<FreshMinion>();
 
@@ -562,8 +623,16 @@ namespace ChebsNecromancy.Minions.Skeletons
                 _ => spawnedChar.AddComponent<SkeletonMinion>()
             };
             minion.SetCreatedAtLevel(playerNecromancyLevel);
-            minion.ScaleEquipment(playerNecromancyLevel, skeletonType, armorType);
+            minion.ScaleEquipment(playerNecromancyLevel, skeletonType, armorType, isMistlandsArmor);
             minion.ScaleStats(playerNecromancyLevel);
+
+            if (isMistlandsWarrior)
+            {
+                var boostedHealth = character.GetMaxHealth() * BasePlugin.MistlandsHealthMultiplierConfig.Value;
+                character.SetMaxHealth(boostedHealth);
+                character.SetHealth(boostedHealth);
+                minion.ApplyMistlandsResistances();
+            }
 
             var eyeColor = Options.Options.EyeColor;
             var boneColor = Options.Options.BoneColor;
@@ -690,6 +759,10 @@ namespace ChebsNecromancy.Minions.Skeletons
                     break;
                 case ArmorType.BlackMetal:
                     AddOrUpdateDrop(characterDrop, "BlackMetal", BasePlugin.ArmorBlackIronRequiredConfig.Value);
+                    if (isMistlandsArmor)
+                    {
+                        AddOrUpdateDrop(characterDrop, "Carapace", BasePlugin.ArmorCarapaceRequiredConfig.Value);
+                    }
                     break;
             }
 
@@ -700,7 +773,8 @@ namespace ChebsNecromancy.Minions.Skeletons
             minion.RecordDrops(characterDrop);
         }
         
-        public static void ConsumeResources(SkeletonType skeletonType, ArmorType armorType)
+        public static void ConsumeResources(SkeletonType skeletonType, ArmorType armorType,
+            bool isMistlandsArmor = false)
         {
             var inventory = Player.m_localPlayer.GetInventory();
             
@@ -802,6 +876,10 @@ namespace ChebsNecromancy.Minions.Skeletons
                     break;
                 case ArmorType.BlackMetal:
                     inventory.RemoveItem("$item_blackmetal", BasePlugin.ArmorBlackIronRequiredConfig.Value);
+                    if (isMistlandsArmor)
+                    {
+                        inventory.RemoveItem("$item_carapace", BasePlugin.ArmorCarapaceRequiredConfig.Value);
+                    }
                     break;
             }
         }

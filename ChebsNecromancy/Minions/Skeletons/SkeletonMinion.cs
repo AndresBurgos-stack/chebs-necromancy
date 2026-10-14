@@ -409,7 +409,6 @@ namespace ChebsNecromancy.Minions.Skeletons
             bool isMistlandsArmor = false)
         {
             var defaultItems = new List<GameObject>();
-            var needsCarapaceHelmetScaleFix = false;
 
             var humanoid = GetComponent<Humanoid>();
             if (humanoid == null)
@@ -536,16 +535,12 @@ namespace ChebsNecromancy.Minions.Skeletons
                     // for them.
                     if (isMistlandsArmor && skeletonType == SkeletonType.WarriorTier4)
                     {
-                        // Helmet is NOT added here - it's equipped separately, on its
-                        // own, right after the shared GiveDefaultItems() call below,
-                        // so we can diff before/after that one specific equip and
-                        // know exactly which new object is the helmet to scale up.
                         defaultItems.AddRange(new[] {
+                            ZNetScene.instance.GetPrefab(BasePlugin.ArmorCarapaceHelmetPrefabConfig.Value),
                             ZNetScene.instance.GetPrefab("ArmorCarapaceChest"),
                             ZNetScene.instance.GetPrefab("ArmorCarapaceLegs"),
                             ZNetScene.instance.GetPrefab("CapeLox"),
                         });
-                        needsCarapaceHelmetScaleFix = true;
                     }
                     else
                     {
@@ -564,12 +559,7 @@ namespace ChebsNecromancy.Minions.Skeletons
             humanoid.m_defaultItems = humanoid.m_defaultItems.Union(defaultItems).ToArray();
             
             humanoid.GiveDefaultItems();
-
-            if (needsCarapaceHelmetScaleFix)
-            {
-                StartCoroutine(AddAndScaleCarapaceHelmetDeferred(humanoid));
-            }
-            
+             
             if (BasePlugin.DurabilityDamage.Value)
             {
                 switch (skeletonType)
@@ -594,64 +584,6 @@ namespace ChebsNecromancy.Minions.Skeletons
                         break;
                 }
             }
-        }
-
-        // HelmetCarapace renders too small on this rig compared to the known-good
-        // Iron helmet, and guessing its instantiated name ("HelmetCarapace") didn't
-        // match anything real (0 transforms found) - same lesson learned twice now
-        // with VisEquipment field names on the Charred. Diffing is the only
-        // technique that's actually worked reliably (Charred gold tint): find
-        // whatever Transforms are new since right before this one equip call, then
-        // scale only the new "roots" (objects whose parent already existed, ie. the
-        // actual attachment points), not every new child mesh individually - scaling
-        // a root scales its whole hierarchy together, so the helmet grows as one
-        // piece instead of stretching each part from a different pivot.
-        // Equips and scales the Carapace helmet entirely inside this one coroutine,
-        // with a settle-wait on BOTH sides of the equip call: first so chest/legs/
-        // cape AND the pre-existing weapon/shield fully finish rendering before we
-        // take the "before" snapshot (last attempt's bug - the weapon/shield hadn't
-        // rendered yet when "before" was taken synchronously, so they looked "new"
-        // too and got scaled by mistake), then again so the helmet itself has
-        // rendered before we take the "after" snapshot and diff.
-        private IEnumerator AddAndScaleCarapaceHelmetDeferred(Humanoid humanoid)
-        {
-            yield return null;
-            yield return null;
-            yield return new WaitForSeconds(0.3f);
-            if (this == null) yield break;
-
-            var beforeNames = new HashSet<string>();
-            foreach (var t in GetComponentsInChildren<Transform>(true)) beforeNames.Add(t.name);
-
-            var carapaceHelmetPrefab = ZNetScene.instance.GetPrefab(BasePlugin.ArmorCarapaceHelmetPrefabConfig.Value);
-            if (carapaceHelmetPrefab == null)
-            {
-                Logger.LogError($"AddAndScaleCarapaceHelmetDeferred: prefab {BasePlugin.ArmorCarapaceHelmetPrefabConfig.Value} not found! Check ArmorCarapaceHelmetPrefab.");
-                yield break;
-            }
-            humanoid.GiveDefaultItem(carapaceHelmetPrefab);
-
-            yield return null;
-            yield return null;
-            yield return new WaitForSeconds(0.3f);
-            if (this == null) yield break;
-
-            var scale = BasePlugin.ArmorCarapaceHelmetScaleConfig.Value;
-            var fixedCount = 0;
-            // DIAGNOSTIC: log every genuinely-new name (whether or not it passes the
-            // "is a root" filter) so we can see exactly what candidates exist instead
-            // of continuing to guess blind.
-            var allNewNames = new List<string>();
-            foreach (var t in GetComponentsInChildren<Transform>(true))
-            {
-                if (beforeNames.Contains(t.name)) continue; // this name already existed - a recreated, unchanged item
-                allNewNames.Add($"{t.name} (parent: {(t.parent != null ? t.parent.name : "null")})");
-                if (t.parent != null && !beforeNames.Contains(t.parent.name)) continue; // not a root of the new hierarchy
-                t.localScale *= scale;
-                fixedCount++;
-            }
-            Logger.LogWarning($"SkeletonMinion: Carapace helmet scale fix applied to {fixedCount} transform(s), x{scale}.");
-            Logger.LogWarning($"SkeletonMinion: all new names since before-snapshot: [{string.Join(" | ", allNewNames)}]");
         }
 
         public static void InstantiateSkeleton(int quality, float playerNecromancyLevel,

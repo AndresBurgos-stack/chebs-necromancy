@@ -101,7 +101,6 @@ namespace ChebsNecromancy
         public static ConfigEntry<int> ArmorBlackIronRequiredConfig;
         public static ConfigEntry<int> ArmorCarapaceRequiredConfig;
         public static ConfigEntry<string> ArmorCarapaceHelmetPrefabConfig;
-        public static ConfigEntry<float> ArmorCarapaceHelmetScaleConfig;
 
         // Extra power for the Mistlands/Carapace-armored Skeleton Warrior, on top of
         // its real higher-armor-rating gear. Weapon damage itself can't be touched
@@ -503,16 +502,7 @@ namespace ChebsNecromancy
             // you want to try something else without needing a code change.
             ArmorCarapaceHelmetPrefabConfig = Config.Bind("General (Server Synced)", "ArmorCarapaceHelmetPrefab",
                 "HelmetCarapace", new ConfigDescription(
-                    "The helmet prefab used with Carapace/Mistlands armor on the Skeleton Warrior (chest/legs always stay Carapace).", null,
-                    new ConfigurationManagerAttributes { IsAdminOnly = true }));
-
-            // HelmetCarapace renders noticeably smaller than the known-good Iron
-            // helmet on this rig. Rather than guess a fixed replacement, scale it up
-            // at equip time (see FixCarapaceHelmetScaleDeferred) by this factor so it
-            // reads as roughly the same size. Tune this in-game without recompiling.
-            ArmorCarapaceHelmetScaleConfig = Config.Bind("General (Server Synced)", "ArmorCarapaceHelmetScale",
-                2.0f, new ConfigDescription(
-                    "Scale multiplier applied to the Carapace helmet on the Skeleton Warrior so it roughly matches the size of the Iron helmet on this rig. 1.0 = no change. NOTE: confirmed not to work (the helmet mesh follows shared skeleton bones, not its own transform) - left in place for whenever a custom helmet model replaces it.", null,
+                    "The helmet prefab used with Carapace/Mistlands armor on the Skeleton Warrior (chest/legs always stay Carapace). Must be a prefab that fits the skeleton rig - HelmetCarapace renders small on it, HelmetIron is the proven alternative.", null,
                     new ConfigurationManagerAttributes { IsAdminOnly = true }));
 
             MistlandsHealthMultiplierConfig = Config.Bind("General (Server Synced)", "MistlandsHealthMultiplier",

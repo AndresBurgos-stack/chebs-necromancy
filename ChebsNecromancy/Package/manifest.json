@@ -1,7 +1,7 @@
 ﻿{
   "name": "ChebsNecromancyEnhanced",
   "description": "Chebs Necromancy Enhanced: Charred Wand with armored elites, minion dance, Dark Hood + Ash Cape with Necromancy bonuses. Full config. Fork of Cheb's Necromancy.",
-  "version_number": "1.3.1",
+  "version_number": "1.3.2",
   "website_url": "https://github.com/AndresBurgos-stack/chebs-necromancy",
   "dependencies": [
     "ValheimModding-Jotunn-2.30.0"

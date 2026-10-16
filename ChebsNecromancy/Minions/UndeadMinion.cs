@@ -188,7 +188,7 @@ namespace ChebsNecromancy.Minions
             }
         }
 
-        private Transform FindBone(string boneName)
+        private protected Transform FindBone(string boneName)
         {
             foreach (var bone in GetComponentsInChildren<Transform>(true))
             {

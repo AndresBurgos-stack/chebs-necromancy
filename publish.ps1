@@ -85,6 +85,7 @@ if($Target.Equals("Release")) {
     New-Item -Type Directory -Path "$PackagePath\plugins" -Force
     New-Item -Type Directory -Path "$PackagePath\plugins\ChebsNecromancy" -Force
     Copy-Item -Path "$TargetPath\$TargetAssembly" -Destination "$PackagePath\plugins\ChebsNecromancy\$TargetAssembly" -Force
+    Copy-Item -Path "$ProjectPath\Assets\CarapaceHelmet.obj" -Destination "$PackagePath\plugins\ChebsNecromancy\CarapaceHelmet.obj" -Force
     Copy-Item -Path "README.md" -Destination "$PackagePath\README.md" -Force
     New-Item -Type Directory -Path "$PackagePath\plugins\ChebsNecromancy\Assets" -Force
     Copy-Item -Path "$ProjectPath\Assets\*" -Destination "$PackagePath\plugins\ChebsNecromancy\Assets" -Force -Recurse

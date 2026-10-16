@@ -43,7 +43,7 @@ namespace ChebsNecromancy
     {
         public const string PluginGuid = "com.chebgonaz.ChebsNecromancy";
         public const string PluginName = "Chebs Necromancy Enhanced";
-        public const string PluginVersion = "1.3.0";
+        public const string PluginVersion = "1.3.1";
         private const string ConfigFileName = PluginGuid + ".cfg";
         private static readonly string ConfigFileFullPath = Path.Combine(Paths.ConfigPath, ConfigFileName);
 
@@ -576,7 +576,7 @@ namespace ChebsNecromancy
                     new ConfigurationManagerAttributes { IsAdminOnly = true }));
 
             WarriorTier4WeaponDiag = Config.Bind("General (Client)", "WarriorTier4WeaponDiag",
-                true, new ConfigDescription("Log-only diagnostic at load: dumps the factory weapon fields (m_randomWeapon, m_defaultItems, ...) of every Warrior tier prefab before any swap, plus whether each configured vanilla weapon resolves. Turn off after verifying."));
+                false, new ConfigDescription("Log-only diagnostic at load: dumps the factory weapon fields (m_randomWeapon, m_defaultItems, ...) of every Warrior tier prefab before any swap, plus whether each configured vanilla weapon resolves. Turn off after verifying."));
 
             WarriorTier4ShieldConfig = Config.Bind("General (Server Synced)", "WarriorTier4Shield",
                 "ShieldBlackmetal", new ConfigDescription(

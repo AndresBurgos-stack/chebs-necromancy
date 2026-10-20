@@ -100,7 +100,7 @@ namespace ChebsNecromancy.Items.Armor.Player
                 BasePlugin.SetEffectNecromancyArmor4 : null;
 
             var shared = customItem.ItemDrop.m_itemData.m_shared;
-            shared.m_armor = 4f;
+            shared.m_armor = 12f;
             var mods = shared.m_damageModifiers;
             var frostIdx = mods.FindIndex(mod => mod.m_type == HitData.DamageType.Frost);
             if (frostIdx >= 0)

@@ -117,6 +117,7 @@ namespace ChebsNecromancy
         public static ConfigEntry<string> WarriorTier4WeaponsConfig;
         public static ConfigEntry<string> WarriorTier4ShieldConfig;
         public static ConfigEntry<bool> WarriorTier4WeaponDiag;
+        public static ConfigEntry<float> EitrRegenBonus;
         public static ConfigEntry<int> NeedlesRequiredConfig;
 
         public static ConfigEntry<bool> DurabilityDamage;
@@ -581,6 +582,10 @@ namespace ChebsNecromancy
             WarriorTier4ShieldConfig = Config.Bind("General (Server Synced)", "WarriorTier4Shield",
                 "ShieldBlackmetal", new ConfigDescription(
                     "Vanilla shield prefab replacing the wooden buckler in WarriorTier4's random shield pool (keeps the 50/50 shield-or-nothing roll). Blank to keep the bundle's wooden shield.", null,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            EitrRegenBonus = Config.Bind("General (Server Synced)", "EitrRegenBonus",
+                2f, new ConfigDescription("Eitr (mana) regeneration per second granted by Dark Necromancer Hood while equipped.", null,
                     new ConfigurationManagerAttributes { IsAdminOnly = true }));
 
             NeedlesRequiredConfig = Config.Bind("General (Server Synced)", "NeedlesRequired",

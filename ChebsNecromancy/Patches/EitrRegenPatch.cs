@@ -1,15 +1,9 @@
-using HarmonyLib;
-using System.Collections.Generic;
 using System.Reflection;
+using ChebsNecromancy.Items.Armor.Player;
+using HarmonyLib;
 using UnityEngine;
 
 // ReSharper disable InconsistentNaming
-
-// Regeneración de Eitr por segundo al equipar Dark Necromancer Hood.
-// SE_Stats en esta versión de Valheim no expone m_eitrRegen, así que se
-// hace mediante un componente en el Player que revisa el equipamiento
-// cada segundo y aplica eitr directamente. No afecta a otros items ni
-// a la lógica de combate.
 
 namespace ChebsNecromancy.Patches
 {
@@ -18,7 +12,6 @@ namespace ChebsNecromancy.Patches
     {
         static void Postfix(Player __instance)
         {
-            // Evitar duplicados si el parche se aplica dos veces
             if (__instance.GetComponent<EitrRegenComponent>() == null)
                 __instance.gameObject.AddComponent<EitrRegenComponent>();
         }
@@ -26,61 +19,53 @@ namespace ChebsNecromancy.Patches
 
     internal class EitrRegenComponent : MonoBehaviour
     {
-        private Player player;
-        private float timer;
-        private FieldInfo equippedItemsField;
-        private FieldInfo eitrField;
+        private static FieldInfo _eitrField;
+
+        private Player _player;
+        private float _timer;
 
         private void Awake()
         {
-            player = GetComponent<Player>();
-            // Cachear campos privados (una sola vez)
-            equippedItemsField = typeof(Inventory).GetField(
-                "m_equippedItems",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            eitrField = typeof(Character).GetField(
-                "m_eitr",
+            _player = GetComponent<Player>();
+            _eitrField ??= typeof(Player).GetField("m_eitr",
                 BindingFlags.NonPublic | BindingFlags.Instance);
         }
 
         private void Update()
         {
+            if (_player == null || BasePlugin.EitrRegenBonus == null) return;
             if (BasePlugin.EitrRegenBonus.Value <= 0f) return;
 
-            timer += Time.deltaTime;
-            if (timer < 1f) return;
-            timer = 0f;
+            _timer += Time.deltaTime;
+            if (_timer < 1f) return;
+            _timer = 0f;
 
             ApplyEitrRegen();
         }
 
         private void ApplyEitrRegen()
         {
-            if (player == null || equippedItemsField == null || eitrField == null) return;
+            if (_eitrField == null) return;
 
-            var inventory = player.GetInventory();
+            var inventory = _player.GetInventory();
             if (inventory == null) return;
 
-            var equipped = equippedItemsField.GetValue(inventory) as List<ItemDrop.ItemData>;
-            if (equipped == null) return;
-
-            bool hasHood = false;
-
-            foreach (var item in equipped)
+            var hasHood = false;
+            foreach (var item in inventory.GetEquippedItems())
             {
-                if (item == null || item.m_dropPrefab == null) continue;
-                var name = item.m_dropPrefab.name;
-
-                if (name.Equals("HelmetMage_Ashlands") || name.Contains("DarkNecromancerHood"))
+                if (item?.m_dropPrefab == null) continue;
+                if (item.m_dropPrefab.name.Contains(DarkNecromancerHood.HoodItemName))
+                {
                     hasHood = true;
+                    break;
+                }
             }
-
             if (!hasHood) return;
 
-            // Aplicar eitr directamente al campo privado m_eitr de Character.
-            // Solo el Dark Necromancer Hood otorga este bonus.
-            float current = (float)eitrField.GetValue(player);
-            eitrField.SetValue(player, current + BasePlugin.EitrRegenBonus.Value);
+            var current = (float)_eitrField.GetValue(_player);
+            var maxEitr = _player.GetMaxEitr();
+            if (current >= maxEitr) return;
+            _eitrField.SetValue(_player, Mathf.Min(maxEitr, current + BasePlugin.EitrRegenBonus.Value));
         }
     }
 }
